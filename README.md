@@ -3,17 +3,15 @@
 A multi-agent finance assistant that pairs web search with market data tools, orchestrated by a team agent and served through a Streamlit UI (with an optional Playground runner).
 
 ## What this does
-- Answers finance questions by combining live web context with Yahoo Finance data
-- Splits work across two specialists: a Web Agent and a Finance Agent
-- Uses Groq models for fast inference
+- Answers finance questions by combining live web/news context with Yahoo Finance data
+- Uses Groq to reason and synthesize results into decision-ready summaries
 - Streamlit mode executes tools directly for reliability (no model tool-calls)
+- Designed with a production-ready posture: deterministic tool execution, clear outputs, and graceful failures
 
-## Architecture
-- Web Agent: searches the web using DuckDuckGo
-- Finance Agent: pulls price, company info, recommendations, and news via `yfinance`
-- Team Agent: routes tasks to the best specialist and composes a single response
-- Storage: local SQLite (`agents.db`) for agent memory
-- Streamlit mode: manual tool execution + Groq summarizer (no tool-calls)
+## Architecture (AI Agent System)
+- **Collect**: DuckDuckGo + Yahoo Finance gather live web/news and market data
+- **Structure**: Ticker-aware parsing normalizes data into a clean context block
+- **Reason**: Groq summarizes and compares results in a reliable, production-minded flow
 
 ## Quick start (Streamlit UI)
 1. Create and activate a virtual environment (optional but recommended).
@@ -65,6 +63,7 @@ Tip: use $TICKER (e.g., $AAPL, $MSFT) for best finance accuracy.
 - Toggles for web/news/finance sources
 - Adjustable result counts and max tickers
 - Optional raw data viewer
+- Quick prompts and KPI metrics for fast iteration
 
 ## Project structure
 - `streamlit_app.py`: Streamlit UI entrypoint
