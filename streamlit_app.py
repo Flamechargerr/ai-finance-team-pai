@@ -76,6 +76,14 @@ KNOWN_COMPANY_TICKERS: Dict[str, str] = {
     "ibm": "IBM",
 }
 
+KNOWN_COMPANY_MULTI_TICKERS: Dict[str, List[str]] = {
+    "tata": ["TCS.NS", "TATAMOTORS.NS", "TATASTEEL.NS"],
+}
+
+QUERY_EXPANSIONS: Dict[str, str] = {
+    "tata": "Tata Group",
+}
+
 
 def _inject_css() -> None:
     st.markdown(
@@ -133,6 +141,10 @@ def _extract_tickers_from_prompt(prompt: str) -> List[str]:
         if name in prompt_lower:
             tickers.add(ticker)
 
+    for name, tickers_list in KNOWN_COMPANY_MULTI_TICKERS.items():
+        if name in prompt_lower:
+            tickers.update(tickers_list)
+
     return sorted(tickers)
 
 
@@ -148,6 +160,42 @@ def _try_resolve_tickers_from_names(prompt: str) -> List[str]:
         return []
 
 
+def _build_queries(prompt: str, tickers: List[str]) -> Dict[str, str]:
+    prompt_clean = prompt.strip()
+    prompt_lower = prompt_clean.lower()
+    query_base = prompt_clean
+
+    for key, value in QUERY_EXPANSIONS.items():
+        if key in prompt_lower:
+            query_base = value
+            break
+
+    if not tickers:
+        if "company" not in query_base.lower() and len(query_base.split()) <= 2:
+            query_base = f"{query_base} company"
+
+    news_query = query_base if "news" in query_base.lower() else f"{query_base} news"
+
+    return {"search": query_base, "news": news_query}
+
+
+def _item_has_keywords(item: object, keywords: Set[str]) -> bool:
+    if not keywords:
+        return True
+    if isinstance(item, dict):
+        text = " ".join(str(item.get(k, "")) for k in ["title", "body", "snippet", "description"]).lower()
+        return any(keyword in text for keyword in keywords)
+    if isinstance(item, str):
+        return any(keyword in item.lower() for keyword in keywords)
+    return False
+
+
+def _filter_items(items: object, keywords: Set[str]) -> List[object]:
+    if not isinstance(items, list):
+        return []
+    return [item for item in items if _item_has_keywords(item, keywords)]
+
+
 def _get_manual_tool_outputs(
     prompt: str,
     tickers: List[str],
@@ -159,16 +207,22 @@ def _get_manual_tool_outputs(
     company_news_count: int,
 ) -> Dict[str, object]:
     data: Dict[str, object] = {"tickers": tickers, "web": {}, "finance": {}}
+    queries = _build_queries(prompt, tickers)
+    keyword_set = {token.lower() for token in re.findall(r"[A-Za-z]{3,}", prompt)}
 
     ddg = DuckDuckGo()
     if include_web_news:
         try:
-            data["web"]["news"] = json.loads(ddg.duckduckgo_news(query=prompt, max_results=news_max_results))
+            news_items = json.loads(ddg.duckduckgo_news(query=queries["news"], max_results=news_max_results))
+            data["web"]["news"] = news_items
+            data["web"]["news_filtered"] = _filter_items(news_items, keyword_set)
         except Exception as exc:
             data["web"]["news_error"] = f"{exc}"
     if include_web_search:
         try:
-            data["web"]["search"] = json.loads(ddg.duckduckgo_search(query=prompt, max_results=search_max_results))
+            search_items = json.loads(ddg.duckduckgo_search(query=queries["search"], max_results=search_max_results))
+            data["web"]["search"] = search_items
+            data["web"]["search_filtered"] = _filter_items(search_items, keyword_set)
         except Exception as exc:
             data["web"]["search_error"] = f"{exc}"
 
@@ -202,6 +256,7 @@ def _get_manual_tool_outputs(
                 ticker_data["company_news_error"] = f"{exc}"
             data["finance"][ticker] = ticker_data
 
+    data["queries"] = queries
     return data
 
 
@@ -210,8 +265,10 @@ def _build_summary_prompt(prompt: str, tickers: List[str], tool_data: Dict[str, 
     return (
         "You are a production-grade finance analyst agent. Summarize the following data and answer the user prompt. "
         "Use tables for comparisons. If news items include links, cite them. "
-        "Do not insert extra spaces between letters. "
-        "If tickers are missing, explain that you used general web/news context only.\n\n"
+        "If web/news data looks unrelated, rely on general knowledge and say it's a best-effort answer. "
+        "If tickers are missing, explain you used general web/news context only. "
+        "If the prompt refers to a group (e.g., Tata), mention the major listed tickers used. "
+        "Do not insert extra spaces between letters.\n\n"
         f"User prompt:\n{prompt}\n\n"
         f"Detected tickers: {tickers_line}\n\n"
         f"Tool data (JSON):\n{json.dumps(tool_data, indent=2)}"
@@ -271,9 +328,9 @@ def _render_how_it_works() -> None:
 
 def _render_production_note() -> None:
     st.markdown(
-        "<div class='card'><div class='section-title'>Production-ready mindset</div>"
+        "<div class='card'><div class='section-title'>Production-ready posture</div>"
         "<div class='muted'>Deterministic tool execution, graceful failures, and clear outputs. "
-        "Use $TICKER (e.g., $AAPL) for maximum accuracy.</div></div>",
+        "Use tickers like AAPL or MSFT for maximum accuracy.</div></div>",
         unsafe_allow_html=True,
     )
 
@@ -329,7 +386,7 @@ def main() -> None:
 
     summarizer = get_summarizer(model_id)
 
-    st.markdown("Tip: Use $TICKER (e.g., $AAPL, $MSFT) for best finance accuracy.")
+    st.markdown("Tip: Use tickers like **AAPL** or **MSFT** for best finance accuracy.")
 
     quick_cols = st.columns(3)
     if quick_cols[0].button("Compare Apple vs Microsoft"):
@@ -340,8 +397,8 @@ def main() -> None:
         st.session_state.pending_prompt = "What's happening in AI stocks this week?"
 
     last_tools = st.session_state.last_tools or {}
-    news_count = _count_items(last_tools.get("web", {}).get("news"))
-    search_count = _count_items(last_tools.get("web", {}).get("search"))
+    news_count = _count_items(last_tools.get("web", {}).get("news_filtered") or last_tools.get("web", {}).get("news"))
+    search_count = _count_items(last_tools.get("web", {}).get("search_filtered") or last_tools.get("web", {}).get("search"))
     tickers_count = len(st.session_state.last_tickers)
 
     metrics = st.columns(3)
