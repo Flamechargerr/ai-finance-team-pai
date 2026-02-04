@@ -89,10 +89,10 @@ def _inject_css() -> None:
     st.markdown(
         """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Source+Serif+4:wght@400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/icon?family=Material+Icons');
 
 :root {
-  --bg: #f7f8fb;
   --panel: #ffffff;
   --border: #e5e7eb;
   --ink: #0f172a;
@@ -102,12 +102,15 @@ def _inject_css() -> None:
   --accent-3: #f59e0b;
 }
 
-html, body, [class*="st-"] { font-family: "Space Grotesk", sans-serif; }
-
-.stApp { background: var(--bg); }
+.material-icons, .material-icons-outlined {
+  font-family: 'Material Icons' !important;
+  font-weight: normal;
+  font-style: normal;
+}
 
 .hero {
-  background: linear-gradient(135deg, #eef2ff 0%, #ecfeff 100%);
+  font-family: "Space Grotesk", sans-serif;
+  background: linear-gradient(135deg, rgba(238,242,255,0.96) 0%, rgba(236,254,255,0.96) 100%);
   border: 1px solid var(--border);
   padding: 24px;
   border-radius: 18px;
@@ -121,19 +124,19 @@ html, body, [class*="st-"] { font-family: "Space Grotesk", sans-serif; }
 .chip.success { background: var(--accent-2); }
 .chip.warn { background: var(--accent-3); }
 
-.card { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 16px; }
-.card-title { font-weight: 700; font-size: 16px; margin-bottom: 6px; }
+.card { font-family: "Space Grotesk", sans-serif; background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 16px; }
+.card-title { font-weight: 700; font-size: 16px; margin-bottom: 6px; color: var(--ink); }
 .card-muted { color: var(--muted); font-size: 13px; }
 
 .divider { height: 1px; background: var(--border); margin: 16px 0; }
 
-.section-title { font-weight: 700; font-size: 18px; margin-bottom: 8px; color: var(--ink); }
+.section-title { font-family: "Space Grotesk", sans-serif; font-weight: 700; font-size: 18px; margin-bottom: 8px; color: var(--ink); }
 
 .badge { display: inline-block; padding: 4px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
 .badge.ok { background: #dcfce7; color: #166534; }
 .badge.warn { background: #fef9c3; color: #854d0e; }
 
-.note { background: #f8fafc; border: 1px dashed var(--border); padding: 12px; border-radius: 12px; color: var(--muted); }
+.note { font-family: "Space Grotesk", sans-serif; background: #f8fafc; border: 1px dashed var(--border); padding: 12px; border-radius: 12px; color: var(--muted); }
 </style>
 """,
         unsafe_allow_html=True,
