@@ -131,6 +131,11 @@ def _inject_css() -> None:
 .stat { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 12px; }
 .stat-label { font-size: 12px; color: var(--muted); }
 .stat-value { font-size: 20px; font-weight: 700; color: var(--ink); }
+
+.pipeline { display: flex; gap: 16px; }
+.pipeline-step { flex: 1; display: flex; gap: 10px; align-items: flex-start; }
+.step { font-weight: 700; font-size: 12px; color: white; background: var(--accent); border-radius: 999px; padding: 4px 8px; }
+.clean-list { margin: 8px 0 0 18px; color: var(--muted); font-size: 13px; }
 </style>
 """,
         unsafe_allow_html=True,
@@ -370,27 +375,51 @@ def _render_header(api_ok: bool, model_id: str, tickers_count: int, news_count: 
 
 def _render_how_it_works() -> None:
     st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
-    st.markdown("<div class='section-title'>How this AI agent works</div>", unsafe_allow_html=True)
-    cols = st.columns(3)
-    cols[0].markdown(
-        "<div class='card'><div class='card-title'>1) Collect</div><div class='card-muted'>DuckDuckGo + Yahoo Finance</div><div class='card-muted'>We fetch news, market data, and company info directly in code for reliability.</div></div>",
-        unsafe_allow_html=True,
-    )
-    cols[1].markdown(
-        "<div class='card'><div class='card-title'>2) Structure</div><div class='card-muted'>Ticker-aware parsing</div><div class='card-muted'>We extract or resolve tickers, normalize data, and build a clean context block.</div></div>",
-        unsafe_allow_html=True,
-    )
-    cols[2].markdown(
-        "<div class='card'><div class='card-title'>3) Reason</div><div class='card-muted'>Groq LLM summary</div><div class='card-muted'>The model focuses on analysis and formatting, not tool calls.</div></div>",
+    st.markdown("<div class='section-title'>Agent pipeline</div>", unsafe_allow_html=True)
+    st.markdown(
+        """
+<div class='card'>
+  <div class='pipeline'>
+    <div class='pipeline-step'>
+      <div class='step'>01</div>
+      <div>
+        <div class='card-title'>Collect</div>
+        <div class='card-muted'>Web/news + market data</div>
+      </div>
+    </div>
+    <div class='pipeline-step'>
+      <div class='step'>02</div>
+      <div>
+        <div class='card-title'>Structure</div>
+        <div class='card-muted'>Ticker parsing + normalization</div>
+      </div>
+    </div>
+    <div class='pipeline-step'>
+      <div class='step'>03</div>
+      <div>
+        <div class='card-title'>Reason</div>
+        <div class='card-muted'>Groq summary + tables</div>
+      </div>
+    </div>
+  </div>
+</div>
+""",
         unsafe_allow_html=True,
     )
 
 
 def _render_production_note() -> None:
     st.markdown(
-        "<div class='card'><div class='card-title'>Production-ready posture</div>"
-        "<div class='card-muted'>Deterministic tool execution, graceful failures, and clear outputs. "
-        "Use tickers like AAPL or MSFT for maximum accuracy.</div></div>",
+        """
+<div class='card'>
+  <div class='card-title'>Reliability defaults</div>
+  <ul class='clean-list'>
+    <li>Deterministic tool execution (no LLM tool calls)</li>
+    <li>Graceful fallbacks with transparent raw data</li>
+    <li>Best accuracy with explicit tickers (e.g., AAPL, MSFT)</li>
+  </ul>
+</div>
+""",
         unsafe_allow_html=True,
     )
 
@@ -454,8 +483,6 @@ def main() -> None:
     _render_header(api_ok, model_id, tickers_count, news_count, search_count)
     _render_how_it_works()
     _render_production_note()
-
-    st.markdown("<div class='note'>Tip: Use tickers like <strong>AAPL</strong> or <strong>MSFT</strong> for best finance accuracy.</div>", unsafe_allow_html=True)
 
     quick_cols = st.columns(3)
     if quick_cols[0].button("Compare Apple vs Microsoft"):
