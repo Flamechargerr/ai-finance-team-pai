@@ -6,6 +6,7 @@ A multi-agent finance assistant that pairs web search with market data tools, or
 - Answers finance questions by combining live web/news context with Yahoo Finance data
 - Uses Groq to reason and synthesize results into decision-ready summaries
 - Streamlit mode executes tools directly for reliability (no model tool-calls)
+- Includes an Investment Compare mode (single-agent) for two-ticker analysis
 - Designed with a production-ready posture: deterministic tool execution, clear outputs, and graceful failures
 
 ## Architecture (AI Agent System)
@@ -34,6 +35,12 @@ streamlit run streamlit_app.py
 ```
 5. Open the URL Streamlit prints in the terminal.
 
+## Investment Compare (single-agent mode)
+1. Open the **Investment Compare** tab in Streamlit.
+2. Enter two tickers (e.g., `AAPL` and `MSFT`).
+3. Optional: add a focus area (valuation, growth, risk, catalysts).
+4. Run the comparison to get a structured, Groq-summarized report.
+
 ## Optional: Playground UI
 If you prefer the `phi` Playground:
 ```bash
@@ -55,10 +62,13 @@ Try these in the UI:
 - "Compare Apple and Microsoft on valuation and recent news."
 - "Summarize Tesla's latest earnings and analyst sentiment."
 - "Which cloud stocks have the best recent momentum?"
+Investment Compare tab:
+- "AAPL vs MSFT"
 Tip: use $TICKER (e.g., $AAPL, $MSFT) for best finance accuracy.
 
 ## Streamlit UX features
 - Quick prompt buttons for common queries
+- Investment Compare tab for two-ticker analysis
 - Detected tickers badge in the sidebar
 - Toggles for web/news/finance sources
 - Adjustable result counts and max tickers
@@ -89,4 +99,4 @@ Common tweaks you might want:
 - If you share this repo, provide instructions to set `GROQ_API_KEY` via environment variables.
 
 ## Attribution
-This project is adapted from the `ai_finance_agent_team` example in Shubham Saboo's awesome-llm-apps repository and is distributed under the Apache 2.0 License.
+This project is adapted from the `ai_finance_agent_team` and `ai_investment_agent` examples in Shubham Saboo's awesome-llm-apps repository and is distributed under the Apache 2.0 License.
