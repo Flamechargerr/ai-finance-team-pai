@@ -198,6 +198,13 @@ def _try_resolve_tickers_from_names(prompt: str) -> List[str]:
         return []
 
 
+def _sanitize_ticker(value: str) -> str:
+    if not value:
+        return ""
+    cleaned = re.sub(r"[^A-Za-z0-9.-]", "", value.strip())
+    return cleaned.upper()
+
+
 def _build_queries(prompt: str, tickers: List[str]) -> Dict[str, str]:
     prompt_clean = prompt.strip()
     prompt_lower = prompt_clean.lower()
@@ -298,6 +305,39 @@ def _get_manual_tool_outputs(
     return data
 
 
+def _get_investment_tool_outputs(
+    ticker_a: str,
+    ticker_b: str,
+    focus: str,
+    include_web_news: bool,
+    include_web_search: bool,
+    include_finance: bool,
+    news_max_results: int,
+    search_max_results: int,
+    company_news_count: int,
+) -> Dict[str, object]:
+    base_prompt = (
+        f"Compare {ticker_a} and {ticker_b} on valuation, financial strength, "
+        "growth, analyst sentiment, and recent news."
+    )
+    if focus:
+        base_prompt = f"{base_prompt} Focus: {focus}."
+    tool_data = _get_manual_tool_outputs(
+        prompt=base_prompt,
+        tickers=[ticker_a, ticker_b],
+        include_web_news=include_web_news,
+        include_web_search=include_web_search,
+        include_finance=include_finance,
+        news_max_results=news_max_results,
+        search_max_results=search_max_results,
+        company_news_count=company_news_count,
+    )
+    tool_data["comparison_prompt"] = base_prompt
+    if focus:
+        tool_data["focus"] = focus
+    return tool_data
+
+
 def _build_summary_prompt(prompt: str, tickers: List[str], tool_data: Dict[str, object]) -> str:
     tickers_line = ", ".join(tickers) if tickers else "None detected"
     return (
@@ -309,6 +349,22 @@ def _build_summary_prompt(prompt: str, tickers: List[str], tool_data: Dict[str, 
         "Do not insert extra spaces between letters.\n\n"
         f"User prompt:\n{prompt}\n\n"
         f"Detected tickers: {tickers_line}\n\n"
+        f"Tool data (JSON):\n{json.dumps(tool_data, indent=2)}"
+    )
+
+
+def _build_investment_summary_prompt(
+    ticker_a: str, ticker_b: str, focus: str, tool_data: Dict[str, object]
+) -> str:
+    focus_line = f"Focus area: {focus}" if focus else "Focus area: valuation, growth, risk, catalysts."
+    return (
+        "You are a production-grade investment analysis agent. Compare the two tickers using the provided data. "
+        "Provide a comparison table for key metrics when available (price, market cap, P/E, EPS, analyst consensus). "
+        "Summarize recent news with links, and list key catalysts and risks. "
+        "Do not provide personalized financial advice. If data is missing, say so explicitly. "
+        "Do not insert extra spaces between letters.\n\n"
+        f"Tickers: {ticker_a}, {ticker_b}\n"
+        f"{focus_line}\n\n"
         f"Tool data (JSON):\n{json.dumps(tool_data, indent=2)}"
     )
 
@@ -426,6 +482,8 @@ def main() -> None:
         st.session_state.pending_prompt = None
     if "last_run_at" not in st.session_state:
         st.session_state.last_run_at = None
+    if "investment_last" not in st.session_state:
+        st.session_state.investment_last = None
 
     last_tools = st.session_state.last_tools or {}
     news_count = _count_items(last_tools.get("web", {}).get("news_filtered") or last_tools.get("web", {}).get("news"))
@@ -484,7 +542,7 @@ def main() -> None:
     metrics[1].metric("News items", news_count)
     metrics[2].metric("Search results", search_count)
 
-    tabs = st.tabs(["Chat", "Insights", "About"])
+    tabs = st.tabs(["Chat", "Investment Compare", "Insights", "About"])
 
     summarizer = get_summarizer(model_id)
 
@@ -552,6 +610,74 @@ def main() -> None:
             )
 
     with tabs[1]:
+        st.subheader("Investment comparison")
+        st.write(
+            "Compare two tickers using live market data plus recent news. "
+            "This mirrors the single-agent investment flow while keeping tool execution deterministic."
+        )
+
+        with st.form("investment_compare"):
+            col_a, col_b = st.columns(2)
+            ticker_a = col_a.text_input("Ticker A", value="AAPL", key="inv_ticker_a")
+            ticker_b = col_b.text_input("Ticker B", value="MSFT", key="inv_ticker_b")
+            focus = st.text_input(
+                "Focus (optional)",
+                value="",
+                key="inv_focus",
+                placeholder="e.g., valuation, growth, risk, catalysts",
+            )
+            submitted = st.form_submit_button("Run investment comparison")
+
+        if submitted:
+            clean_a = _sanitize_ticker(ticker_a)
+            clean_b = _sanitize_ticker(ticker_b)
+            if not clean_a or not clean_b:
+                st.warning("Add two tickers (e.g., AAPL, MSFT) to run a comparison.")
+            else:
+                with st.spinner("Gathering data..."):
+                    tool_data = _get_investment_tool_outputs(
+                        ticker_a=clean_a,
+                        ticker_b=clean_b,
+                        focus=focus,
+                        include_web_news=include_web_news,
+                        include_web_search=include_web_search,
+                        include_finance=include_finance,
+                        news_max_results=news_max_results,
+                        search_max_results=search_max_results,
+                        company_news_count=company_news_count,
+                    )
+                    summary_prompt = _build_investment_summary_prompt(clean_a, clean_b, focus, tool_data)
+
+                    try:
+                        response = summarizer.run(summary_prompt, stream=False)
+                        summary = _normalize_spaced_text(response.get_content_as_string())
+                    except Exception as exc:
+                        summary = (
+                            "I couldn't generate an investment summary, but the raw data is available below. "
+                            f"Error: {exc}"
+                        )
+
+                    st.session_state.investment_last = {
+                        "tickers": [clean_a, clean_b],
+                        "focus": focus,
+                        "summary": summary,
+                        "tools": tool_data,
+                        "run_at": datetime.now().strftime("%b %d, %Y %I:%M %p"),
+                    }
+                    st.session_state.last_tools = tool_data
+                    st.session_state.last_tickers = [clean_a, clean_b]
+                    st.session_state.last_run_at = st.session_state.investment_last["run_at"]
+
+        if st.session_state.get("investment_last"):
+            last = st.session_state.investment_last
+            st.markdown("### Latest comparison")
+            st.caption(f"Last run: {last['run_at']}")
+            st.markdown(last["summary"])
+            if show_raw_data:
+                with st.expander("Raw data"):
+                    st.json(last["tools"])
+
+    with tabs[2]:
         st.subheader("Latest run overview")
         if not st.session_state.last_tools:
             st.info("Run a query to see insights and raw data.")
@@ -564,19 +690,20 @@ def main() -> None:
                 st.markdown("**Raw tool data**")
                 st.json(st.session_state.last_tools)
 
-    with tabs[2]:
+    with tabs[3]:
         st.subheader("Why this is an AI agent project")
         st.write(
-            "This system is a production-minded AI agent pipeline. It collects live data, structures it, "
-            "and uses a Groq LLM to synthesize decisions and comparisons. The model never calls tools directly, "
-            "which eliminates tool-call failures and keeps responses consistent."
+            "This system is an agentic pipeline: it collects live data, structures it into a clean context, "
+            "and uses Groq to synthesize insights. The model never calls tools directly, which makes outputs "
+            "deterministic and production-friendly."
         )
+        st.markdown("**Production-ready posture**")
         st.markdown(
             """
-- Deterministic data collection
-- Transparent sources and raw data visibility
-- Reliable summarization with Groq
-- Safe fallbacks on failures
+- Deterministic tool execution (manual data collection)
+- Transparent sources with optional raw data visibility
+- Reliable summarization with Groq and safe fallbacks
+- Separate chat and investment-compare modes for focused workflows
 """
         )
 
