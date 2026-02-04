@@ -73,6 +73,7 @@ Common tweaks you might want:
 - Missing API key: ensure `GROQ_API_KEY` is set in your shell.
 - Dependency issues: re-run `pip install -r requirements.txt` inside your active venv.
 - Network errors: confirm you can reach Groq, DuckDuckGo, and Yahoo Finance from your network.
+- Streamlit tool failures: the Streamlit UI executes tools directly and should not fail due to model tool-calls.
 
 ## Security notes
 - Do not commit API keys or secrets to git.
