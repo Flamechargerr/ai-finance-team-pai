@@ -1,6 +1,7 @@
 import json
 import os
 import re
+from datetime import datetime
 from typing import Dict, List, Set
 
 import streamlit as st
@@ -74,6 +75,33 @@ KNOWN_COMPANY_TICKERS: Dict[str, str] = {
     "oracle": "ORCL",
     "ibm": "IBM",
 }
+
+
+def _inject_css() -> None:
+    st.markdown(
+        """
+<style>
+:root { --accent: #0ea5e9; --accent-2: #16a34a; --accent-3: #f97316; }
+.hero { background: linear-gradient(135deg, #f6f9ff 0%, #eefcf8 100%); border: 1px solid #e2e8f0; padding: 22px; border-radius: 16px; }
+.hero h1 { margin: 0; font-size: 28px; }
+.badge { display: inline-block; padding: 6px 10px; border-radius: 999px; color: white; font-size: 12px; margin-right: 6px; }
+.badge.primary { background: var(--accent); }
+.badge.success { background: var(--accent-2); }
+.badge.warn { background: var(--accent-3); }
+.card { background: white; border: 1px solid #e5e7eb; border-radius: 14px; padding: 16px; min-height: 120px; }
+.muted { color: #6b7280; }
+.section-title { font-weight: 700; font-size: 18px; margin-bottom: 6px; }
+.kv { font-size: 13px; color: #6b7280; }
+.divider { height: 1px; background: #e5e7eb; margin: 16px 0; }
+</style>
+""",
+        unsafe_allow_html=True,
+    )
+
+
+def _normalize_spaced_text(text: str) -> str:
+    pattern = r"(?:\b[0-9A-Za-z]\s){3,}[0-9A-Za-z]\b"
+    return re.sub(pattern, lambda m: m.group(0).replace(" ", ""), text)
 
 
 def _maybe_parse_json(value: object) -> object:
@@ -180,7 +208,7 @@ def _get_manual_tool_outputs(
 def _build_summary_prompt(prompt: str, tickers: List[str], tool_data: Dict[str, object]) -> str:
     tickers_line = ", ".join(tickers) if tickers else "None detected"
     return (
-        "You are a finance analyst. Summarize the following data and answer the user prompt. "
+        "You are a production-grade finance analyst agent. Summarize the following data and answer the user prompt. "
         "Use tables for comparisons. If news items include links, cite them. "
         "Do not insert extra spaces between letters. "
         "If tickers are missing, explain that you used general web/news context only.\n\n"
@@ -206,11 +234,57 @@ def _count_items(value: object) -> int:
     return 0
 
 
+def _render_hero() -> None:
+    st.markdown(
+        """
+<div class="hero">
+  <div>
+    <span class="badge primary">AI Agent System</span>
+    <span class="badge success">Manual Tools (No-Fail)</span>
+    <span class="badge warn">Groq Summarizer</span>
+  </div>
+  <h1>AI Finance Agent Team</h1>
+  <p class="muted">Production-minded agentic workflow that combines live web/news + market data with Groq reasoning.</p>
+</div>
+""",
+        unsafe_allow_html=True,
+    )
+
+
+def _render_how_it_works() -> None:
+    st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
+    st.markdown("**How this AI agent works**")
+    cols = st.columns(3)
+    cols[0].markdown(
+        "<div class='card'><div class='section-title'>1) Collect</div><div class='kv'>DuckDuckGo + Yahoo Finance</div><div class='muted'>We fetch news, market data, and company info directly in code for reliability.</div></div>",
+        unsafe_allow_html=True,
+    )
+    cols[1].markdown(
+        "<div class='card'><div class='section-title'>2) Structure</div><div class='kv'>Ticker-aware parsing</div><div class='muted'>We extract or resolve tickers, normalize data, and build a clean context block.</div></div>",
+        unsafe_allow_html=True,
+    )
+    cols[2].markdown(
+        "<div class='card'><div class='section-title'>3) Reason</div><div class='kv'>Groq LLM summary</div><div class='muted'>The model focuses on analysis and formatting, not tool calls.</div></div>",
+        unsafe_allow_html=True,
+    )
+
+
+def _render_production_note() -> None:
+    st.markdown(
+        "<div class='card'><div class='section-title'>Production-ready mindset</div>"
+        "<div class='muted'>Deterministic tool execution, graceful failures, and clear outputs. "
+        "Use $TICKER (e.g., $AAPL) for maximum accuracy.</div></div>",
+        unsafe_allow_html=True,
+    )
+
+
 def main() -> None:
     st.set_page_config(page_title="AI Finance Agent Team", layout="wide")
+    _inject_css()
 
-    st.title("AI Finance Agent Team (Groq)")
-    st.caption("Web + Finance assistant with manual tools and Groq summarization.")
+    _render_hero()
+    _render_how_it_works()
+    _render_production_note()
 
     if "history" not in st.session_state:
         st.session_state.history = []
@@ -220,6 +294,8 @@ def main() -> None:
         st.session_state.last_tickers = []
     if "pending_prompt" not in st.session_state:
         st.session_state.pending_prompt = None
+    if "last_run_at" not in st.session_state:
+        st.session_state.last_run_at = None
 
     with st.sidebar:
         st.subheader("Settings")
@@ -242,6 +318,9 @@ def main() -> None:
             st.markdown(f"**Detected tickers:** {', '.join(st.session_state.last_tickers)}")
         else:
             st.markdown("**Detected tickers:** None")
+
+        if st.session_state.last_run_at:
+            st.caption(f"Last run: {st.session_state.last_run_at}")
 
         if st.button("Clear chat"):
             st.session_state.history = []
@@ -309,6 +388,7 @@ def main() -> None:
                 try:
                     response = summarizer.run(summary_prompt, stream=False)
                     content = response.get_content_as_string()
+                    content = _normalize_spaced_text(content)
                 except Exception as exc:
                     content = (
                         "I couldn't generate a summary, but I did gather the raw data below. "
@@ -321,6 +401,7 @@ def main() -> None:
 
                 st.session_state.last_tools = tool_data
                 st.session_state.last_tickers = tickers
+                st.session_state.last_run_at = datetime.now().strftime("%b %d, %Y %I:%M %p")
 
         st.session_state.history.append(
             {
