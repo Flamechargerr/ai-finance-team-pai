@@ -1,6 +1,6 @@
 # AI Finance Agent Team (Groq)
 
-A multi-agent finance assistant that pairs web search with market data tools, orchestrated by a team agent and served through the `phi` Playground UI.
+A multi-agent finance assistant that pairs web search with market data tools, orchestrated by a team agent and served through a Streamlit UI (with an optional Playground runner).
 
 ## What this does
 - Answers finance questions by combining live web context with Yahoo Finance data
@@ -13,7 +13,7 @@ A multi-agent finance assistant that pairs web search with market data tools, or
 - Team Agent: routes tasks to the best specialist and composes a single response
 - Storage: local SQLite (`agents.db`) for agent memory
 
-## Quick start
+## Quick start (Streamlit UI)
 1. Create and activate a virtual environment (optional but recommended).
 2. Install dependencies:
 ```bash
@@ -23,11 +23,18 @@ pip install -r requirements.txt
 ```bash
 export GROQ_API_KEY="your_groq_api_key"
 ```
-4. Run the app:
+4. Run the Streamlit app:
+```bash
+streamlit run streamlit_app.py
+```
+5. Open the URL Streamlit prints in the terminal.
+
+## Optional: Playground UI
+If you prefer the `phi` Playground:
 ```bash
 python3 finance_agent_team.py
 ```
-5. Open the Playground URL printed in the terminal.
+Then open the Playground URL printed in the terminal.
 
 ## Environment variables
 - `GROQ_API_KEY`: required for Groq model access
@@ -39,13 +46,14 @@ export GROQ_MODEL="llama-3.3-70b-versatile"
 ```
 
 ## Example prompts
-Try these in the Playground:
+Try these in the UI:
 - "Compare Apple and Microsoft on valuation and recent news."
 - "Summarize Tesla's latest earnings and analyst sentiment."
 - "Which cloud stocks have the best recent momentum?"
 
 ## Project structure
-- `finance_agent_team.py`: main entrypoint and agent definitions
+- `streamlit_app.py`: Streamlit UI entrypoint
+- `finance_agent_team.py`: Playground entrypoint and agent definitions
 - `requirements.txt`: Python dependencies
 - `LICENSE`: Apache 2.0 license
 

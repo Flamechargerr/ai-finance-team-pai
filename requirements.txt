@@ -3,4 +3,5 @@ groq
 duckduckgo-search
 yfinance
 
+streamlit
 sqlalchemy
