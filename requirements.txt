@@ -2,3 +2,5 @@ phidata
 groq
 duckduckgo-search
 yfinance
+
+sqlalchemy
