@@ -1,33 +1,69 @@
 # AI Finance Agent Team (Groq)
 
-AI finance agent team with web access and financial data tools, built with the `phi` agent framework and Groq models.
+A multi-agent finance assistant that pairs web search with market data tools, orchestrated by a team agent and served through the `phi` Playground UI.
 
-## Features
-- Web agent that searches the internet
-- Finance agent that fetches market data and company info via Yahoo Finance
-- Team agent that orchestrates both agents
-- Playground UI for interactive use
+## What this does
+- Answers finance questions by combining live web context with Yahoo Finance data
+- Splits work across two specialists: a Web Agent and a Finance Agent
+- Uses Groq models for fast inference
 
-## Setup
-1. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-2. Set your Groq API key:
-   ```bash
-   export GROQ_API_KEY="your_groq_api_key"
-   ```
-3. (Optional) Override the default model:
-   ```bash
-   export GROQ_MODEL="llama-3.3-70b-versatile"
-   ```
+## Architecture
+- Web Agent: searches the web using DuckDuckGo
+- Finance Agent: pulls price, company info, recommendations, and news via `yfinance`
+- Team Agent: routes tasks to the best specialist and composes a single response
+- Storage: local SQLite (`agents.db`) for agent memory
 
-## Run
+## Quick start
+1. Create and activate a virtual environment (optional but recommended).
+2. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
+3. Set your Groq API key:
+```bash
+export GROQ_API_KEY="your_groq_api_key"
+```
+4. Run the app:
 ```bash
 python3 finance_agent_team.py
 ```
+5. Open the Playground URL printed in the terminal.
 
-Then open the Playground URL shown in the terminal.
+## Environment variables
+- `GROQ_API_KEY`: required for Groq model access
+- `GROQ_MODEL`: optional model override (default: `llama-3.3-70b-versatile`)
+
+Example:
+```bash
+export GROQ_MODEL="llama-3.3-70b-versatile"
+```
+
+## Example prompts
+Try these in the Playground:
+- "Compare Apple and Microsoft on valuation and recent news."
+- "Summarize Tesla's latest earnings and analyst sentiment."
+- "Which cloud stocks have the best recent momentum?"
+
+## Project structure
+- `finance_agent_team.py`: main entrypoint and agent definitions
+- `requirements.txt`: Python dependencies
+- `LICENSE`: Apache 2.0 license
+
+## Customization
+Common tweaks you might want:
+- Change the model: set `GROQ_MODEL` or edit `MODEL_ID` in `finance_agent_team.py`.
+- Add tools: extend the `tools` list on either agent.
+- Add a new agent: create another `Agent` and include it in the `team` list.
+- Reset memory: delete `agents.db` to clear saved history.
+
+## Troubleshooting
+- Missing API key: ensure `GROQ_API_KEY` is set in your shell.
+- Dependency issues: re-run `pip install -r requirements.txt` inside your active venv.
+- Network errors: confirm you can reach Groq, DuckDuckGo, and Yahoo Finance from your network.
+
+## Security notes
+- Do not commit API keys or secrets to git.
+- If you share this repo, provide instructions to set `GROQ_API_KEY` via environment variables.
 
 ## Attribution
 This project is adapted from the `ai_finance_agent_team` example in Shubham Saboo's awesome-llm-apps repository and is distributed under the Apache 2.0 License.
