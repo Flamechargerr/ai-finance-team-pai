@@ -1,11 +1,15 @@
 import os
 
+from dotenv import load_dotenv
+
 from phi.agent import Agent
 from phi.model.groq import Groq
 from phi.playground import Playground, serve_playground_app
 from phi.storage.agent.sqlite import SqlAgentStorage
 from phi.tools.duckduckgo import DuckDuckGo
 from phi.tools.yfinance import YFinanceTools
+
+load_dotenv()
 
 MODEL_ID = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 
