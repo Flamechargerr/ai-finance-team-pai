@@ -102,12 +102,6 @@ def _inject_css() -> None:
   --accent-3: #f59e0b;
 }
 
-.material-icons, .material-icons-outlined {
-  font-family: 'Material Icons' !important;
-  font-weight: normal;
-  font-style: normal;
-}
-
 .hero {
   font-family: "Space Grotesk", sans-serif;
   background: linear-gradient(135deg, rgba(238,242,255,0.96) 0%, rgba(236,254,255,0.96) 100%);
@@ -128,15 +122,15 @@ def _inject_css() -> None:
 .card-title { font-weight: 700; font-size: 16px; margin-bottom: 6px; color: var(--ink); }
 .card-muted { color: var(--muted); font-size: 13px; }
 
-.divider { height: 1px; background: var(--border); margin: 16px 0; }
-
 .section-title { font-family: "Space Grotesk", sans-serif; font-weight: 700; font-size: 18px; margin-bottom: 8px; color: var(--ink); }
 
-.badge { display: inline-block; padding: 4px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
-.badge.ok { background: #dcfce7; color: #166534; }
-.badge.warn { background: #fef9c3; color: #854d0e; }
+.divider { height: 1px; background: var(--border); margin: 16px 0; }
 
 .note { font-family: "Space Grotesk", sans-serif; background: #f8fafc; border: 1px dashed var(--border); padding: 12px; border-radius: 12px; color: var(--muted); }
+
+.stat { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 12px; }
+.stat-label { font-size: 12px; color: var(--muted); }
+.stat-value { font-size: 20px; font-weight: 700; color: var(--ink); }
 </style>
 """,
         unsafe_allow_html=True,
@@ -327,23 +321,51 @@ def _count_items(value: object) -> int:
     return 0
 
 
-def _render_hero(api_ok: bool) -> None:
-    status_badge = "<span class='badge ok'>Ready</span>" if api_ok else "<span class='badge warn'>API key missing</span>"
-    st.markdown(
-        f"""
+def _render_header(api_ok: bool, model_id: str, tickers_count: int, news_count: int, search_count: int) -> None:
+    col1, col2 = st.columns([3, 1], gap="large")
+    with col1:
+        status_badge = "Ready" if api_ok else "API key missing"
+        st.markdown(
+            f"""
 <div class="hero">
   <div>
     <span class="chip primary">AI Agent System</span>
     <span class="chip success">Manual Tools (No-Fail)</span>
     <span class="chip warn">Groq Summarizer</span>
-    {status_badge}
+    <span class="chip primary">{status_badge}</span>
   </div>
   <h1>AI Finance Agent Team</h1>
   <p>Production-minded agentic workflow that combines live web/news + market data with Groq reasoning.</p>
 </div>
 """,
-        unsafe_allow_html=True,
-    )
+            unsafe_allow_html=True,
+        )
+    with col2:
+        st.markdown(
+            f"""
+<div class="card">
+  <div class="card-title">System Snapshot</div>
+  <div class="card-muted">Model</div>
+  <div style="font-weight:700; margin-bottom:8px;">{model_id}</div>
+  <div class="divider"></div>
+  <div class="stat">
+    <div class="stat-label">Tickers</div>
+    <div class="stat-value">{tickers_count}</div>
+  </div>
+  <div style="height:8px"></div>
+  <div class="stat">
+    <div class="stat-label">News Items</div>
+    <div class="stat-value">{news_count}</div>
+  </div>
+  <div style="height:8px"></div>
+  <div class="stat">
+    <div class="stat-label">Search Results</div>
+    <div class="stat-value">{search_count}</div>
+  </div>
+</div>
+""",
+            unsafe_allow_html=True,
+        )
 
 
 def _render_how_it_works() -> None:
@@ -377,12 +399,6 @@ def main() -> None:
     st.set_page_config(page_title="AI Finance Agent Team", layout="wide")
     _inject_css()
 
-    api_ok = bool(os.getenv("GROQ_API_KEY"))
-
-    _render_hero(api_ok)
-    _render_how_it_works()
-    _render_production_note()
-
     if "history" not in st.session_state:
         st.session_state.history = []
     if "last_tools" not in st.session_state:
@@ -394,6 +410,13 @@ def main() -> None:
     if "last_run_at" not in st.session_state:
         st.session_state.last_run_at = None
 
+    last_tools = st.session_state.last_tools or {}
+    news_count = _count_items(last_tools.get("web", {}).get("news_filtered") or last_tools.get("web", {}).get("news"))
+    search_count = _count_items(last_tools.get("web", {}).get("search_filtered") or last_tools.get("web", {}).get("search"))
+    tickers_count = len(st.session_state.last_tickers)
+
+    api_ok = bool(os.getenv("GROQ_API_KEY"))
+
     with st.sidebar:
         st.subheader("Control Panel")
         model_id = st.text_input("Model", value=DEFAULT_MODEL_ID)
@@ -401,19 +424,19 @@ def main() -> None:
         if not api_ok:
             st.warning("GROQ_API_KEY is not set. The app will fail without it.")
 
-        with st.expander("Data sources", expanded=True):
-            include_finance = st.checkbox("Include finance data", value=True)
-            include_web_news = st.checkbox("Include web news", value=True)
-            include_web_search = st.checkbox("Include web search", value=True)
+        st.markdown("**Data sources**")
+        include_finance = st.checkbox("Include finance data", value=True)
+        include_web_news = st.checkbox("Include web news", value=True)
+        include_web_search = st.checkbox("Include web search", value=True)
 
-        with st.expander("Result limits"):
-            news_max_results = st.slider("News results", 1, 10, DEFAULT_NEWS_RESULTS)
-            search_max_results = st.slider("Search results", 1, 10, DEFAULT_SEARCH_RESULTS)
-            company_news_count = st.slider("Company news per ticker", 1, 10, DEFAULT_COMPANY_NEWS_STORIES)
-            max_tickers = st.slider("Max tickers", 1, 12, DEFAULT_MAX_TICKERS)
+        st.markdown("**Result limits**")
+        news_max_results = st.slider("News results", 1, 10, DEFAULT_NEWS_RESULTS)
+        search_max_results = st.slider("Search results", 1, 10, DEFAULT_SEARCH_RESULTS)
+        company_news_count = st.slider("Company news per ticker", 1, 10, DEFAULT_COMPANY_NEWS_STORIES)
+        max_tickers = st.slider("Max tickers", 1, 12, DEFAULT_MAX_TICKERS)
 
-        with st.expander("Display"):
-            show_raw_data = st.toggle("Show raw data", value=False)
+        st.markdown("**Display**")
+        show_raw_data = st.toggle("Show raw data", value=False)
 
         if st.session_state.last_tickers:
             st.markdown(f"**Detected tickers:** {', '.join(st.session_state.last_tickers)}")
@@ -428,7 +451,9 @@ def main() -> None:
             st.session_state.last_tools = None
             st.session_state.last_tickers = []
 
-    summarizer = get_summarizer(model_id)
+    _render_header(api_ok, model_id, tickers_count, news_count, search_count)
+    _render_how_it_works()
+    _render_production_note()
 
     st.markdown("<div class='note'>Tip: Use tickers like <strong>AAPL</strong> or <strong>MSFT</strong> for best finance accuracy.</div>", unsafe_allow_html=True)
 
@@ -440,17 +465,14 @@ def main() -> None:
     if quick_cols[2].button("Top AI stocks this week"):
         st.session_state.pending_prompt = "What's happening in AI stocks this week?"
 
-    last_tools = st.session_state.last_tools or {}
-    news_count = _count_items(last_tools.get("web", {}).get("news_filtered") or last_tools.get("web", {}).get("news"))
-    search_count = _count_items(last_tools.get("web", {}).get("search_filtered") or last_tools.get("web", {}).get("search"))
-    tickers_count = len(st.session_state.last_tickers)
-
     metrics = st.columns(3)
     metrics[0].metric("Tickers", tickers_count)
     metrics[1].metric("News items", news_count)
     metrics[2].metric("Search results", search_count)
 
     tabs = st.tabs(["Chat", "Insights", "About"])
+
+    summarizer = get_summarizer(model_id)
 
     with tabs[0]:
         for item in st.session_state.history:
