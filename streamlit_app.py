@@ -1,6 +1,7 @@
 import os
 
 import streamlit as st
+from dotenv import load_dotenv
 
 from phi.agent import Agent
 from phi.model.groq import Groq
@@ -8,6 +9,8 @@ from phi.storage.agent.sqlite import SqlAgentStorage
 from phi.tools.duckduckgo import DuckDuckGo
 from phi.tools.yfinance import YFinanceTools
 
+
+load_dotenv()
 
 DEFAULT_MODEL_ID = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 
