@@ -47,5 +47,9 @@ agent_team = Agent(
 
 app = Playground(agents=[agent_team]).get_app()
 
+@app.get("/")
+def root():
+    return {"status": "ok"}
+
 if __name__ == "__main__":
     serve_playground_app("finance_agent_team:app", reload=True)
