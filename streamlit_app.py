@@ -89,18 +89,51 @@ def _inject_css() -> None:
     st.markdown(
         """
 <style>
-:root { --accent: #0ea5e9; --accent-2: #16a34a; --accent-3: #f97316; }
-.hero { background: linear-gradient(135deg, #f6f9ff 0%, #eefcf8 100%); border: 1px solid #e2e8f0; padding: 22px; border-radius: 16px; }
-.hero h1 { margin: 0; font-size: 28px; }
-.badge { display: inline-block; padding: 6px 10px; border-radius: 999px; color: white; font-size: 12px; margin-right: 6px; }
-.badge.primary { background: var(--accent); }
-.badge.success { background: var(--accent-2); }
-.badge.warn { background: var(--accent-3); }
-.card { background: white; border: 1px solid #e5e7eb; border-radius: 14px; padding: 16px; min-height: 120px; }
-.muted { color: #6b7280; }
-.section-title { font-weight: 700; font-size: 18px; margin-bottom: 6px; }
-.kv { font-size: 13px; color: #6b7280; }
-.divider { height: 1px; background: #e5e7eb; margin: 16px 0; }
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Source+Serif+4:wght@400;600&display=swap');
+
+:root {
+  --bg: #f7f8fb;
+  --panel: #ffffff;
+  --border: #e5e7eb;
+  --ink: #0f172a;
+  --muted: #64748b;
+  --accent: #2563eb;
+  --accent-2: #16a34a;
+  --accent-3: #f59e0b;
+}
+
+html, body, [class*="st-"] { font-family: "Space Grotesk", sans-serif; }
+
+.stApp { background: var(--bg); }
+
+.hero {
+  background: linear-gradient(135deg, #eef2ff 0%, #ecfeff 100%);
+  border: 1px solid var(--border);
+  padding: 24px;
+  border-radius: 18px;
+}
+
+.hero h1 { margin: 8px 0 6px; font-size: 28px; color: var(--ink); }
+.hero p { margin: 0; color: var(--muted); }
+
+.chip { display: inline-block; padding: 6px 10px; border-radius: 999px; font-size: 12px; margin-right: 6px; color: white; }
+.chip.primary { background: var(--accent); }
+.chip.success { background: var(--accent-2); }
+.chip.warn { background: var(--accent-3); }
+
+.card { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 16px; }
+.card-title { font-weight: 700; font-size: 16px; margin-bottom: 6px; }
+.card-muted { color: var(--muted); font-size: 13px; }
+
+.divider { height: 1px; background: var(--border); margin: 16px 0; }
+
+.section-title { font-weight: 700; font-size: 18px; margin-bottom: 8px; color: var(--ink); }
+
+.badge { display: inline-block; padding: 4px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+.badge.ok { background: #dcfce7; color: #166534; }
+.badge.warn { background: #fef9c3; color: #854d0e; }
+
+.note { background: #f8fafc; border: 1px dashed var(--border); padding: 12px; border-radius: 12px; color: var(--muted); }
 </style>
 """,
         unsafe_allow_html=True,
@@ -291,17 +324,19 @@ def _count_items(value: object) -> int:
     return 0
 
 
-def _render_hero() -> None:
+def _render_hero(api_ok: bool) -> None:
+    status_badge = "<span class='badge ok'>Ready</span>" if api_ok else "<span class='badge warn'>API key missing</span>"
     st.markdown(
-        """
+        f"""
 <div class="hero">
   <div>
-    <span class="badge primary">AI Agent System</span>
-    <span class="badge success">Manual Tools (No-Fail)</span>
-    <span class="badge warn">Groq Summarizer</span>
+    <span class="chip primary">AI Agent System</span>
+    <span class="chip success">Manual Tools (No-Fail)</span>
+    <span class="chip warn">Groq Summarizer</span>
+    {status_badge}
   </div>
   <h1>AI Finance Agent Team</h1>
-  <p class="muted">Production-minded agentic workflow that combines live web/news + market data with Groq reasoning.</p>
+  <p>Production-minded agentic workflow that combines live web/news + market data with Groq reasoning.</p>
 </div>
 """,
         unsafe_allow_html=True,
@@ -310,26 +345,26 @@ def _render_hero() -> None:
 
 def _render_how_it_works() -> None:
     st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
-    st.markdown("**How this AI agent works**")
+    st.markdown("<div class='section-title'>How this AI agent works</div>", unsafe_allow_html=True)
     cols = st.columns(3)
     cols[0].markdown(
-        "<div class='card'><div class='section-title'>1) Collect</div><div class='kv'>DuckDuckGo + Yahoo Finance</div><div class='muted'>We fetch news, market data, and company info directly in code for reliability.</div></div>",
+        "<div class='card'><div class='card-title'>1) Collect</div><div class='card-muted'>DuckDuckGo + Yahoo Finance</div><div class='card-muted'>We fetch news, market data, and company info directly in code for reliability.</div></div>",
         unsafe_allow_html=True,
     )
     cols[1].markdown(
-        "<div class='card'><div class='section-title'>2) Structure</div><div class='kv'>Ticker-aware parsing</div><div class='muted'>We extract or resolve tickers, normalize data, and build a clean context block.</div></div>",
+        "<div class='card'><div class='card-title'>2) Structure</div><div class='card-muted'>Ticker-aware parsing</div><div class='card-muted'>We extract or resolve tickers, normalize data, and build a clean context block.</div></div>",
         unsafe_allow_html=True,
     )
     cols[2].markdown(
-        "<div class='card'><div class='section-title'>3) Reason</div><div class='kv'>Groq LLM summary</div><div class='muted'>The model focuses on analysis and formatting, not tool calls.</div></div>",
+        "<div class='card'><div class='card-title'>3) Reason</div><div class='card-muted'>Groq LLM summary</div><div class='card-muted'>The model focuses on analysis and formatting, not tool calls.</div></div>",
         unsafe_allow_html=True,
     )
 
 
 def _render_production_note() -> None:
     st.markdown(
-        "<div class='card'><div class='section-title'>Production-ready posture</div>"
-        "<div class='muted'>Deterministic tool execution, graceful failures, and clear outputs. "
+        "<div class='card'><div class='card-title'>Production-ready posture</div>"
+        "<div class='card-muted'>Deterministic tool execution, graceful failures, and clear outputs. "
         "Use tickers like AAPL or MSFT for maximum accuracy.</div></div>",
         unsafe_allow_html=True,
     )
@@ -339,7 +374,9 @@ def main() -> None:
     st.set_page_config(page_title="AI Finance Agent Team", layout="wide")
     _inject_css()
 
-    _render_hero()
+    api_ok = bool(os.getenv("GROQ_API_KEY"))
+
+    _render_hero(api_ok)
     _render_how_it_works()
     _render_production_note()
 
@@ -355,21 +392,25 @@ def main() -> None:
         st.session_state.last_run_at = None
 
     with st.sidebar:
-        st.subheader("Settings")
+        st.subheader("Control Panel")
         model_id = st.text_input("Model", value=DEFAULT_MODEL_ID)
         st.caption("Override with the GROQ_MODEL environment variable.")
-        if not os.getenv("GROQ_API_KEY"):
+        if not api_ok:
             st.warning("GROQ_API_KEY is not set. The app will fail without it.")
 
-        include_finance = st.checkbox("Include finance data", value=True)
-        include_web_news = st.checkbox("Include web news", value=True)
-        include_web_search = st.checkbox("Include web search", value=True)
+        with st.expander("Data sources", expanded=True):
+            include_finance = st.checkbox("Include finance data", value=True)
+            include_web_news = st.checkbox("Include web news", value=True)
+            include_web_search = st.checkbox("Include web search", value=True)
 
-        news_max_results = st.slider("News results", 1, 10, DEFAULT_NEWS_RESULTS)
-        search_max_results = st.slider("Search results", 1, 10, DEFAULT_SEARCH_RESULTS)
-        company_news_count = st.slider("Company news per ticker", 1, 10, DEFAULT_COMPANY_NEWS_STORIES)
-        max_tickers = st.slider("Max tickers", 1, 12, DEFAULT_MAX_TICKERS)
-        show_raw_data = st.toggle("Show raw data", value=False)
+        with st.expander("Result limits"):
+            news_max_results = st.slider("News results", 1, 10, DEFAULT_NEWS_RESULTS)
+            search_max_results = st.slider("Search results", 1, 10, DEFAULT_SEARCH_RESULTS)
+            company_news_count = st.slider("Company news per ticker", 1, 10, DEFAULT_COMPANY_NEWS_STORIES)
+            max_tickers = st.slider("Max tickers", 1, 12, DEFAULT_MAX_TICKERS)
+
+        with st.expander("Display"):
+            show_raw_data = st.toggle("Show raw data", value=False)
 
         if st.session_state.last_tickers:
             st.markdown(f"**Detected tickers:** {', '.join(st.session_state.last_tickers)}")
@@ -386,7 +427,7 @@ def main() -> None:
 
     summarizer = get_summarizer(model_id)
 
-    st.markdown("Tip: Use tickers like **AAPL** or **MSFT** for best finance accuracy.")
+    st.markdown("<div class='note'>Tip: Use tickers like <strong>AAPL</strong> or <strong>MSFT</strong> for best finance accuracy.</div>", unsafe_allow_html=True)
 
     quick_cols = st.columns(3)
     if quick_cols[0].button("Compare Apple vs Microsoft"):
@@ -406,66 +447,98 @@ def main() -> None:
     metrics[1].metric("News items", news_count)
     metrics[2].metric("Search results", search_count)
 
-    for item in st.session_state.history:
-        with st.chat_message(item["role"]):
-            st.markdown(item["content"])
-            if show_raw_data and item["role"] == "assistant" and item.get("tools"):
-                with st.expander("Raw data"):
-                    st.json(item["tools"])
+    tabs = st.tabs(["Chat", "Insights", "About"])
 
-    prompt = st.chat_input("Ask a finance question...")
-    if not prompt and st.session_state.pending_prompt:
-        prompt = st.session_state.pending_prompt
-        st.session_state.pending_prompt = None
-
-    if prompt:
-        st.session_state.history.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
-
-        with st.chat_message("assistant"):
-            with st.spinner("Thinking..."):
-                tickers = _extract_tickers_from_prompt(prompt)
-                if not tickers:
-                    tickers = _try_resolve_tickers_from_names(prompt)
-                tickers = tickers[:max_tickers]
-
-                tool_data = _get_manual_tool_outputs(
-                    prompt=prompt,
-                    tickers=tickers,
-                    include_web_news=include_web_news,
-                    include_web_search=include_web_search,
-                    include_finance=include_finance,
-                    news_max_results=news_max_results,
-                    search_max_results=search_max_results,
-                    company_news_count=company_news_count,
-                )
-                summary_prompt = _build_summary_prompt(prompt, tickers, tool_data)
-
-                try:
-                    response = summarizer.run(summary_prompt, stream=False)
-                    content = response.get_content_as_string()
-                    content = _normalize_spaced_text(content)
-                except Exception as exc:
-                    content = (
-                        "I couldn't generate a summary, but I did gather the raw data below. "
-                        f"Error: {exc}"
-                    )
-                st.markdown(content)
-                if show_raw_data:
+    with tabs[0]:
+        for item in st.session_state.history:
+            with st.chat_message(item["role"]):
+                st.markdown(item["content"])
+                if show_raw_data and item["role"] == "assistant" and item.get("tools"):
                     with st.expander("Raw data"):
-                        st.json(tool_data)
+                        st.json(item["tools"])
 
-                st.session_state.last_tools = tool_data
-                st.session_state.last_tickers = tickers
-                st.session_state.last_run_at = datetime.now().strftime("%b %d, %Y %I:%M %p")
+        prompt = st.chat_input("Ask a finance question...")
+        if not prompt and st.session_state.pending_prompt:
+            prompt = st.session_state.pending_prompt
+            st.session_state.pending_prompt = None
 
-        st.session_state.history.append(
-            {
-                "role": "assistant",
-                "content": content,
-                "tools": tool_data,
-            }
+        if prompt:
+            st.session_state.history.append({"role": "user", "content": prompt})
+            with st.chat_message("user"):
+                st.markdown(prompt)
+
+            with st.chat_message("assistant"):
+                with st.spinner("Thinking..."):
+                    tickers = _extract_tickers_from_prompt(prompt)
+                    if not tickers:
+                        tickers = _try_resolve_tickers_from_names(prompt)
+                    tickers = tickers[:max_tickers]
+
+                    tool_data = _get_manual_tool_outputs(
+                        prompt=prompt,
+                        tickers=tickers,
+                        include_web_news=include_web_news,
+                        include_web_search=include_web_search,
+                        include_finance=include_finance,
+                        news_max_results=news_max_results,
+                        search_max_results=search_max_results,
+                        company_news_count=company_news_count,
+                    )
+                    summary_prompt = _build_summary_prompt(prompt, tickers, tool_data)
+
+                    try:
+                        response = summarizer.run(summary_prompt, stream=False)
+                        content = response.get_content_as_string()
+                        content = _normalize_spaced_text(content)
+                    except Exception as exc:
+                        content = (
+                            "I couldn't generate a summary, but I did gather the raw data below. "
+                            f"Error: {exc}"
+                        )
+                    st.markdown(content)
+                    if show_raw_data:
+                        with st.expander("Raw data"):
+                            st.json(tool_data)
+
+                    st.session_state.last_tools = tool_data
+                    st.session_state.last_tickers = tickers
+                    st.session_state.last_run_at = datetime.now().strftime("%b %d, %Y %I:%M %p")
+
+            st.session_state.history.append(
+                {
+                    "role": "assistant",
+                    "content": content,
+                    "tools": tool_data,
+                }
+            )
+
+    with tabs[1]:
+        st.subheader("Latest run overview")
+        if not st.session_state.last_tools:
+            st.info("Run a query to see insights and raw data.")
+        else:
+            st.markdown("**Queries used**")
+            st.code(json.dumps(st.session_state.last_tools.get("queries", {}), indent=2))
+            st.markdown("**Detected tickers**")
+            st.write(", ".join(st.session_state.last_tickers) or "None")
+            if show_raw_data:
+                st.markdown("**Raw tool data**")
+                st.json(st.session_state.last_tools)
+
+    with tabs[2]:
+        st.subheader("Why this is an AI agent project")
+        st.write(
+            "This system is a production-minded AI agent pipeline. It collects live data, structures it, "
+            "and uses a Groq LLM to synthesize decisions and comparisons. The model never calls tools directly, "
+            "which eliminates tool-call failures and keeps responses consistent."
+        )
+        st.markdown(
+            """
+- Deterministic data collection
+- Transparent sources and raw data visibility
+- Reliable summarization with Groq
+- Safe fallbacks on failures
+"""
         )
 
 
