@@ -132,10 +132,13 @@ def _inject_css() -> None:
 .stat-label { font-size: 12px; color: var(--muted); }
 .stat-value { font-size: 20px; font-weight: 700; color: var(--ink); }
 
-.pipeline { display: flex; gap: 16px; }
-.pipeline-step { flex: 1; display: flex; gap: 10px; align-items: flex-start; }
-.step { font-weight: 700; font-size: 12px; color: white; background: var(--accent); border-radius: 999px; padding: 4px 8px; }
-.clean-list { margin: 8px 0 0 18px; color: var(--muted); font-size: 13px; }
+.pipeline { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+.pipeline-step { background: #f8fafc; border: 1px solid var(--border); border-radius: 12px; padding: 12px; }
+.step { font-weight: 700; font-size: 11px; color: white; background: var(--accent); border-radius: 999px; padding: 4px 8px; display: inline-block; }
+.step-title { font-weight: 700; color: var(--ink); margin-top: 8px; }
+.step-desc { color: var(--muted); font-size: 12px; }
+.reliability { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.pill { background: #eef2ff; color: #1e3a8a; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px; }
 </style>
 """,
         unsafe_allow_html=True,
@@ -382,42 +385,27 @@ def _render_how_it_works() -> None:
   <div class='pipeline'>
     <div class='pipeline-step'>
       <div class='step'>01</div>
-      <div>
-        <div class='card-title'>Collect</div>
-        <div class='card-muted'>Web/news + market data</div>
-      </div>
+      <div class='step-title'>Collect</div>
+      <div class='step-desc'>DuckDuckGo + Yahoo Finance</div>
     </div>
     <div class='pipeline-step'>
       <div class='step'>02</div>
-      <div>
-        <div class='card-title'>Structure</div>
-        <div class='card-muted'>Ticker parsing + normalization</div>
-      </div>
+      <div class='step-title'>Structure</div>
+      <div class='step-desc'>Ticker parsing and data normalization</div>
     </div>
     <div class='pipeline-step'>
       <div class='step'>03</div>
-      <div>
-        <div class='card-title'>Reason</div>
-        <div class='card-muted'>Groq summary + tables</div>
-      </div>
+      <div class='step-title'>Reason</div>
+      <div class='step-desc'>Groq summary with comparisons</div>
     </div>
   </div>
-</div>
-""",
-        unsafe_allow_html=True,
-    )
-
-
-def _render_production_note() -> None:
-    st.markdown(
-        """
-<div class='card'>
-  <div class='card-title'>Reliability defaults</div>
-  <ul class='clean-list'>
-    <li>Deterministic tool execution (no LLM tool calls)</li>
-    <li>Graceful fallbacks with transparent raw data</li>
-    <li>Best accuracy with explicit tickers (e.g., AAPL, MSFT)</li>
-  </ul>
+  <div class='divider'></div>
+  <div class='card-muted'>Reliability defaults</div>
+  <div class='reliability'>
+    <span class='pill'>Deterministic tools</span>
+    <span class='pill'>Graceful fallbacks</span>
+    <span class='pill'>Best with explicit tickers</span>
+  </div>
 </div>
 """,
         unsafe_allow_html=True,
@@ -482,7 +470,6 @@ def main() -> None:
 
     _render_header(api_ok, model_id, tickers_count, news_count, search_count)
     _render_how_it_works()
-    _render_production_note()
 
     quick_cols = st.columns(3)
     if quick_cols[0].button("Compare Apple vs Microsoft"):
