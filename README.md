@@ -122,3 +122,4 @@ This command will:
  Minor update 6
  Minor update 7
  Minor update 8
+ Minor update 9
