@@ -1,3 +1,4 @@
+import concurrent.futures
 import json
 import os
 import re
@@ -373,14 +374,16 @@ def _get_manual_tool_outputs(
     keyword_set = {token.lower() for token in re.findall(r"[A-Za-z]{3,}", prompt)}
 
     ddg = DuckDuckGo()
-    if include_web_news:
+
+    def fetch_web_news():
         try:
             news_items = json.loads(ddg.duckduckgo_news(query=queries["news"], max_results=news_max_results))
             data["web"]["news"] = news_items
             data["web"]["news_filtered"] = _filter_items(news_items, keyword_set)
         except Exception as exc:
             data["web"]["news_error"] = f"{exc}"
-    if include_web_search:
+
+    def fetch_web_search():
         try:
             search_items = json.loads(ddg.duckduckgo_search(query=queries["search"], max_results=search_max_results))
             data["web"]["search"] = search_items
@@ -388,34 +391,51 @@ def _get_manual_tool_outputs(
         except Exception as exc:
             data["web"]["search_error"] = f"{exc}"
 
-    if include_finance:
+    def fetch_finance_for_ticker(ticker: str):
         yf_tools = YFinanceTools(
             stock_price=True,
             analyst_recommendations=True,
             company_info=True,
             company_news=True,
         )
-        for ticker in tickers:
-            ticker_data: Dict[str, object] = {}
-            try:
-                ticker_data["price"] = yf_tools.get_current_stock_price(ticker)
-            except Exception as exc:
-                ticker_data["price_error"] = f"{exc}"
-            try:
-                info = yf_tools.get_company_info(ticker)
-                ticker_data["company_info"] = _maybe_parse_json(info)
-            except Exception as exc:
-                ticker_data["company_info_error"] = f"{exc}"
-            try:
-                recs = yf_tools.get_analyst_recommendations(ticker)
-                ticker_data["analyst_recommendations"] = _maybe_parse_json(recs)
-            except Exception as exc:
-                ticker_data["analyst_recommendations_error"] = f"{exc}"
-            try:
-                news = yf_tools.get_company_news(ticker, num_stories=company_news_count)
-                ticker_data["company_news"] = _maybe_parse_json(news)
-            except Exception as exc:
-                ticker_data["company_news_error"] = f"{exc}"
+        ticker_data: Dict[str, object] = {}
+        try:
+            ticker_data["price"] = yf_tools.get_current_stock_price(ticker)
+        except Exception as exc:
+            ticker_data["price_error"] = f"{exc}"
+        try:
+            info = yf_tools.get_company_info(ticker)
+            ticker_data["company_info"] = _maybe_parse_json(info)
+        except Exception as exc:
+            ticker_data["company_info_error"] = f"{exc}"
+        try:
+            recs = yf_tools.get_analyst_recommendations(ticker)
+            ticker_data["analyst_recommendations"] = _maybe_parse_json(recs)
+        except Exception as exc:
+            ticker_data["analyst_recommendations_error"] = f"{exc}"
+        try:
+            news = yf_tools.get_company_news(ticker, num_stories=company_news_count)
+            ticker_data["company_news"] = _maybe_parse_json(news)
+        except Exception as exc:
+            ticker_data["company_news_error"] = f"{exc}"
+        return ticker, ticker_data
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        futures = []
+        if include_web_news:
+            futures.append(executor.submit(fetch_web_news))
+        if include_web_search:
+            futures.append(executor.submit(fetch_web_search))
+        
+        finance_futures = []
+        if include_finance:
+            for ticker in tickers:
+                finance_futures.append(executor.submit(fetch_finance_for_ticker, ticker))
+        
+        concurrent.futures.wait(futures)
+        
+        for future in concurrent.futures.as_completed(finance_futures):
+            ticker, ticker_data = future.result()
             data["finance"][ticker] = ticker_data
 
     data["queries"] = queries
@@ -458,12 +478,15 @@ def _get_investment_tool_outputs(
 def _build_summary_prompt(prompt: str, tickers: List[str], tool_data: Dict[str, object]) -> str:
     tickers_line = ", ".join(tickers) if tickers else "None detected"
     return (
-        "You are a production-grade finance analyst agent. Summarize the following data and answer the user prompt. "
-        "Use tables for comparisons. If news items include links, cite them. "
-        "If web/news data looks unrelated, rely on general knowledge and say it's a best-effort answer. "
-        "If tickers are missing, explain you used general web/news context only. "
-        "If the prompt refers to a group (e.g., Tata), mention the major listed tickers used. "
-        "Do not insert extra spaces between letters.\n\n"
+        "You are a top-tier, production-grade financial analyst AI. Your task is to provide a highly structured, "
+        "insightful, and data-driven response based on the provided live market data and news.\n\n"
+        "Guidelines:\n"
+        "1. Start with a brief <thought> block where you review the raw data and plan your response.\n"
+        "2. Provide a clear, executive-style summary answering the user's prompt directly.\n"
+        "3. Use professional markdown formatting including tables, bullet points, and bold text for key metrics.\n"
+        "4. Always cite news items with their exact full URLs if available.\n"
+        "5. Do not hallucinate financial numbers. If data is missing or unrelated, explicitly state it is best-effort.\n"
+        "6. Do not insert extra spaces between letters.\n\n"
         f"User prompt:\n{prompt}\n\n"
         f"Detected tickers: {tickers_line}\n\n"
         f"Tool data (JSON):\n{json.dumps(tool_data, indent=2)}"
@@ -475,11 +498,14 @@ def _build_investment_summary_prompt(
 ) -> str:
     focus_line = f"Focus area: {focus}" if focus else "Focus area: valuation, growth, risk, catalysts."
     return (
-        "You are a production-grade investment analysis agent. Compare the two tickers using the provided data. "
-        "Provide a comparison table for key metrics when available (price, market cap, P/E, EPS, analyst consensus). "
-        "Summarize recent news with links, and list key catalysts and risks. "
-        "Do not provide personalized financial advice. If data is missing, say so explicitly. "
-        "Do not insert extra spaces between letters.\n\n"
+        "You are an elite investment analysis AI. Compare the two requested tickers using the provided live data.\n\n"
+        "Guidelines:\n"
+        "1. Start with a brief <thought> block to analyze the comparative data.\n"
+        "2. Provide a side-by-side comparison table for key metrics (price, market cap, P/E, EPS, analyst consensus) if available.\n"
+        "3. Summarize recent news with links and list key catalysts and risks.\n"
+        "4. Do not provide personalized financial advice.\n"
+        "5. Do not hallucinate numbers. If data is missing, explicitly say so.\n"
+        "6. Do not insert extra spaces between letters.\n\n"
         f"Tickers: {ticker_a}, {ticker_b}\n"
         f"{focus_line}\n\n"
         f"Tool data (JSON):\n{json.dumps(tool_data, indent=2)}"
