@@ -114,3 +114,4 @@ This command will:
 - install dependencies from `requirements.txt`
 - load `.env`
 - start Streamlit on `http://localhost:8501`
+ Minor update 1
