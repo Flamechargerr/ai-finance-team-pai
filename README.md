@@ -130,3 +130,4 @@ This command will:
  Minor update 14
  Minor update 15
  Minor update 16
+ Minor update 17
