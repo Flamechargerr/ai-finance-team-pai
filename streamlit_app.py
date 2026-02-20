@@ -14,7 +14,7 @@ from phi.tools.duckduckgo import DuckDuckGo
 from phi.tools.yfinance import YFinanceTools
 
 
-load_dotenv()
+load_dotenv(override=True)
 
 DEFAULT_MODEL_ID = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 DEFAULT_NEWS_RESULTS = 5
