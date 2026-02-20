@@ -150,3 +150,4 @@ This command will:
  Minor update 34
  Minor update 35
  Update 1
+ Update 2
