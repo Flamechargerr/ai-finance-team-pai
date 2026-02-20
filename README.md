@@ -100,3 +100,17 @@ Common tweaks you might want:
 
 ## Attribution
 This project is adapted from the `ai_finance_agent_team` and `ai_investment_agent` examples in Shubham Saboo's awesome-llm-apps repository and is distributed under the Apache 2.0 License.
+
+## One-command start
+
+From the project directory:
+
+```bash
+./run_all.sh
+```
+
+This command will:
+- create `.venv` if needed
+- install dependencies from `requirements.txt`
+- load `.env`
+- start Streamlit on `http://localhost:8501`
