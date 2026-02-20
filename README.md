@@ -120,3 +120,4 @@ This command will:
  Minor update 4
  Minor update 5
  Minor update 6
+ Minor update 7
