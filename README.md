@@ -146,3 +146,4 @@ This command will:
  Minor update 30
  Minor update 31
  Minor update 32
+ Minor update 33
