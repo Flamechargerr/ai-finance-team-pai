@@ -2,7 +2,7 @@ import concurrent.futures
 import json
 import os
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, List, Set
 
 import streamlit as st
@@ -14,7 +14,7 @@ from phi.tools.duckduckgo import DuckDuckGo
 from phi.tools.yfinance import YFinanceTools
 
 
-load_dotenv(override=True)
+load_dotenv(".env", override=True)
 
 DEFAULT_MODEL_ID = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 DEFAULT_NEWS_RESULTS = 5
@@ -75,6 +75,11 @@ KNOWN_COMPANY_TICKERS: Dict[str, str] = {
     "salesforce": "CRM",
     "oracle": "ORCL",
     "ibm": "IBM",
+    "nasdaq": "^IXIC",
+    "s&p 500": "^GSPC",
+    "sp500": "^GSPC",
+    "dow jones": "^DJI",
+    "dow": "^DJI",
 }
 
 KNOWN_COMPANY_MULTI_TICKERS: Dict[str, List[str]] = {
@@ -90,173 +95,192 @@ def _inject_css() -> None:
     st.markdown(
         """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
-/* Global settings to override dark mode defaults with our custom vibe */
 :root {
-  --panel-bg: rgba(17, 25, 40, 0.75);
-  --panel-border: rgba(255, 255, 255, 0.125);
+  --bg-main: #030712;
+  --panel-bg: rgba(15, 23, 42, 0.65);
+  --panel-border: rgba(56, 189, 248, 0.15);
+  --accent: #22d3ee;
+  --accent-glow: rgba(34, 211, 238, 0.3);
+  --emerald: #10b981;
+  --rose: #f43f5e;
   --ink: #f8fafc;
   --muted: #94a3b8;
-  --accent: #3b82f6;
-  --accent-hover: #2563eb;
-  --accent-2: #10b981;
-  --accent-3: #f59e0b;
-  --glow-primary: rgba(59, 130, 246, 0.5);
+  --font-sans: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
 }
 
-/* Force dark mode appearance for Streamlit app background and generic elements */
 .stApp {
-    background-color: #0b0f19;
+    background-color: var(--bg-main);
     color: var(--ink);
-    font-family: 'Outfit', sans-serif !important;
+    font-family: var(--font-sans) !important;
 }
 
-/* Hero Section */
-.hero {
-  font-family: "Outfit", sans-serif;
-  background: linear-gradient(145deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.9) 100%);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--panel-border);
-  padding: 32px;
-  border-radius: 20px;
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-.hero::before {
-  content: "";
-  position: absolute;
-  top: -50%; left: -50%; width: 200%; height: 200%;
-  background: radial-gradient(circle, rgba(59,130,246,0.15) 0%, rgba(0,0,0,0) 70%);
-  z-index: 0;
-  pointer-events: none;
-}
-
-.hero > div, .hero h1, .hero p {
-  position: relative;
-  z-index: 1;
-}
-
-.hero:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.5);
-}
-
-.hero h1 { 
-  margin: 12px 0 8px; 
-  font-size: 36px; 
-  font-weight: 700;
-  background: linear-gradient(to right, #60a5fa, #a78bfa);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-.hero p { margin: 0; color: var(--muted); font-size: 16px; font-weight: 300; }
-
-/* Chips */
-.chip { display: inline-block; padding: 6px 14px; border-radius: 999px; font-size: 12px; font-weight: 600; margin-right: 8px; margin-bottom: 8px; color: #fff; letter-spacing: 0.5px; text-transform: uppercase;}
-.chip.primary { background: linear-gradient(135deg, var(--accent), #1d4ed8); box-shadow: 0 4px 10px var(--glow-primary); }
-.chip.success { background: linear-gradient(135deg, var(--accent-2), #059669); }
-.chip.warn { background: linear-gradient(135deg, var(--accent-3), #d97706); }
-
-/* Cards */
-.card { 
-  font-family: "Outfit", sans-serif; 
-  background: var(--panel-bg); 
+/* Glassmorphism Panels */
+.glass-panel {
+  background: var(--panel-bg);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--panel-border); 
-  border-radius: 16px; 
-  padding: 20px; 
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-  transition: all 0.3s ease;
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 24px -2px rgba(0, 0, 0, 0.5);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.card:hover { border-color: rgba(255,255,255,0.25); box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4); transform: translateY(-2px); }
-.card-title { font-weight: 600; font-size: 18px; margin-bottom: 8px; color: var(--ink); letter-spacing: 0.5px;}
-.card-muted { color: var(--muted); font-size: 14px; font-weight: 300;}
 
-/* Layout Utilities */
-.section-title { font-family: "Outfit", sans-serif; font-weight: 600; font-size: 22px; margin-bottom: 12px; color: var(--ink); }
-.divider { height: 1px; background: linear-gradient(90deg, transparent, var(--panel-border), transparent); margin: 24px 0; }
-.note { font-family: "Outfit", sans-serif; background: rgba(59, 130, 246, 0.1); border: 1px dashed rgba(59, 130, 246, 0.4); padding: 16px; border-radius: 12px; color: #bfdbfe; font-size: 14px;}
-
-/* Stats */
-.stat { 
-  background: rgba(15, 23, 42, 0.5); 
-  border: 1px solid var(--panel-border); 
-  border-radius: 12px; 
-  padding: 16px; 
-  transition: all 0.2s ease;
+.glass-panel:hover {
+  border-color: rgba(34, 211, 238, 0.4);
+  box-shadow: 0 0 20px -5px var(--accent-glow);
+  transform: translateY(-2px);
 }
-.stat:hover { background: rgba(30, 41, 59, 0.8); border-color: rgba(96, 165, 250, 0.5); transform: scale(1.02); }
-.stat-label { font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; font-weight: 500;}
-.stat-value { font-size: 28px; font-weight: 700; color: #fff; text-shadow: 0 0 10px rgba(255,255,255,0.2); margin-top: 4px;}
 
-/* Pipeline Steps */
-.pipeline { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
-.pipeline-step { 
-  background: rgba(15, 23, 42, 0.6); 
-  border: 1px solid var(--panel-border); 
-  border-radius: 16px; 
-  padding: 16px; 
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-}
-.pipeline-step:hover {
-  background: rgba(30, 41, 59, 0.9);
-  border-color: rgba(96, 165, 250, 0.6);
-  transform: translateY(-4px);
-  box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-}
-.pipeline-step::after {
-  content: ""; position: absolute; top: 0; right: 0; width: 50px; height: 50px;
-  background: radial-gradient(circle top right, rgba(59,130,246,0.2) 0%, transparent 70%);
-}
-.step { font-weight: 700; font-size: 12px; color: #0f172a; background: #60a5fa; border-radius: 999px; padding: 6px 12px; display: inline-block; box-shadow: 0 0 10px rgba(96, 165, 250, 0.5);}
-.step-title { font-weight: 600; color: #fff; margin-top: 12px; font-size: 16px;}
-.step-desc { color: var(--muted); font-size: 13px; margin-top: 4px; font-weight: 300;}
+/* Typography */
+h1, h2, h3 { font-weight: 700 !important; letter-spacing: -0.025em !important; }
+.mono { font-family: var(--font-mono) !important; }
 
-/* Reliabilities */
-.reliability { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
-.pill { background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.3); color: #93c5fd; font-size: 12px; font-weight: 500; padding: 6px 14px; border-radius: 999px; letter-spacing: 0.5px;}
-
-/* Custom Streamlit Element Overrides */
-/* Buttons */
-div.stButton > button {
-    background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
-    color: white !important;
+/* Custom Chat Bubbles */
+[data-testid="stChatMessage"] {
+    background-color: transparent !important;
     border: none !important;
-    border-radius: 8px !important;
+    padding: 1rem 0 !important;
+}
+
+[data-testid="stChatMessageContent"] {
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 16px;
+    padding: 1.25rem 1.5rem !important;
+    font-size: 15px;
+    line-height: 1.6;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+}
+
+[data-testid="stChatMessage"][data-test-persona="user"] [data-testid="stChatMessageContent"] {
+    background: rgba(30, 41, 59, 0.8);
+    border-left: 4px solid var(--accent);
+}
+
+[data-testid="stChatMessage"][data-test-persona="assistant"] [data-testid="stChatMessageContent"] {
+    background: rgba(15, 23, 42, 0.8);
+    border-left: 4px solid var(--emerald);
+}
+
+/* Metric Cards */
+.metric-card {
+    background: rgba(2, 6, 23, 0.8);
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    padding: 1.25rem;
+    text-align: left;
+    transition: all 0.2s ease;
+}
+.metric-card:hover {
+    border-color: var(--accent);
+    box-shadow: 0 0 15px var(--accent-glow);
+}
+.metric-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); font-weight: 600; margin-bottom: 0.4rem;}
+.metric-value { font-family: var(--font-mono); font-size: 28px; font-weight: 500; color: var(--ink); }
+
+/* Hero Section */
+.hero-container {
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(2, 6, 23, 0.95) 100%);
+    border: 1px solid var(--panel-border);
+    border-radius: 16px;
+    padding: 2.5rem;
+    margin-bottom: 2rem;
+    position: relative;
+    overflow: hidden;
+}
+.hero-container::after {
+    content: "";
+    position: absolute;
+    top: -50%; right: -50%; width: 100%; height: 100%;
+    background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+    pointer-events: none;
+}
+.hero-title { font-size: 2.5rem; margin-bottom: 0.5rem; background: linear-gradient(to right, #fff, var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.hero-subtitle { color: var(--muted); font-size: 1.1rem; max-width: 800px; line-height: 1.5; }
+
+/* Status Badges */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 12px;
+    border-radius: 99px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-right: 8px;
+    border: 1px solid transparent;
+}
+.status-badge.cyan { background: rgba(34, 211, 238, 0.1); color: var(--accent); border-color: var(--accent-glow); }
+.status-badge.emerald { background: rgba(16, 185, 129, 0.1); color: var(--emerald); border-color: rgba(16, 185, 129, 0.2); }
+.status-badge.rose { background: rgba(244, 63, 94, 0.1); color: var(--rose); border-color: rgba(244, 63, 94, 0.2); }
+
+/* Sidebar cleanup */
+[data-testid="stSidebar"] {
+    background-color: #020617 !important;
+    border-right: 1px solid var(--panel-border);
+}
+
+/* Buttons */
+.stButton button {
+    background: var(--accent) !important;
+    background-image: linear-gradient(135deg, #0891b2 0%, #22d3ee 100%) !important;
+    color: #020617 !important;
+    border: none !important;
+    font-weight: 600 !important;
+    border-radius: 6px !important;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.5rem 1rem !important;
+    transition: all 0.2s ease !important;
+    font-family: var(--font-sans) !important;
+}
+
+.stButton button:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 0 15px var(--accent-glow) !important;
+    opacity: 0.9;
+}
+
+/* Tabs */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 2rem;
+    background-color: transparent !important;
+    border-bottom: 1px solid var(--panel-border);
+}
+.stTabs [data-baseweb="tab"] {
+    height: 50px !important;
+    background-color: transparent !important;
+    color: var(--muted) !important;
     font-weight: 500 !important;
-    font-family: 'Outfit', sans-serif !important;
-    transition: all 0.3s ease !important;
+    padding: 0 1rem !important;
 }
-div.stButton > button:hover {
-    transform: translateY(-2px) !important;
-    box-shadow: 0 8px 20px rgba(37, 99, 235, 0.4) !important;
-    background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
-    color: white !important;
+.stTabs [aria-selected="true"] {
+    color: var(--accent) !important;
+    border-bottom-color: var(--accent) !important;
 }
-/* Inputs */
-.stTextInput input, .stChatInputContainer {
-    background: rgba(15, 23, 42, 0.8) !important;
-    border: 1px solid var(--panel-border) !important;
-    color: white !important;
-    border-radius: 8px !important;
+
+/* Utility Card */
+.util-card {
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 12px;
+    padding: 1.5rem;
 }
-.stTextInput input:focus, .stChatInput textarea:focus {
-    border-color: #3b82f6 !important;
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25) !important;
-}
-/* Metrics */
-[data-testid="stMetricValue"] {
-    font-family: 'Outfit', sans-serif;
-    color: white;
-}
+.util-title { font-size: 18px; font-weight: 600; margin-bottom: 1rem; color: var(--ink); }
+
+/* Pipeline */
+.pipeline-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+.pipeline-item { padding: 1.25rem; background: rgba(255,255,255,0.03); border: 1px solid var(--panel-border); border-radius: 12px; }
+.pipeline-num { font-family: var(--font-mono); color: var(--accent); font-size: 12px; margin-bottom: 0.5rem; }
+.pipeline-txt { font-size: 14px; font-weight: 500; }
+
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
 </style>
 """,
         unsafe_allow_html=True,
@@ -327,6 +351,15 @@ def _build_queries(prompt: str, tickers: List[str]) -> Dict[str, str]:
     prompt_clean = prompt.strip()
     prompt_lower = prompt_clean.lower()
     query_base = prompt_clean
+
+    # Resolve temporal relative terms to actual dates for search engines
+    now = datetime.now()
+    if "yesterday" in prompt_lower:
+        yesterday_date = (now - timedelta(days=1)).strftime("%Y-%m-%d")
+        query_base = f"{query_base} {yesterday_date}"
+    elif "today" in prompt_lower:
+        today_date = now.strftime("%Y-%m-%d")
+        query_base = f"{query_base} {today_date}"
 
     for key, value in QUERY_EXPANSIONS.items():
         if key in prompt_lower:
@@ -477,9 +510,11 @@ def _get_investment_tool_outputs(
 
 def _build_summary_prompt(prompt: str, tickers: List[str], tool_data: Dict[str, object]) -> str:
     tickers_line = ", ".join(tickers) if tickers else "None detected"
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     return (
         "You are a top-tier, production-grade financial analyst AI. Your task is to provide a highly structured, "
         "insightful, and data-driven response based on the provided live market data and news.\n\n"
+        f"Current Date/Time: {now_str}\n\n"
         "Guidelines:\n"
         "1. Start with a brief <thought> block where you review the raw data and plan your response.\n"
         "2. Provide a clear, executive-style summary answering the user's prompt directly.\n"
@@ -497,8 +532,10 @@ def _build_investment_summary_prompt(
     ticker_a: str, ticker_b: str, focus: str, tool_data: Dict[str, object]
 ) -> str:
     focus_line = f"Focus area: {focus}" if focus else "Focus area: valuation, growth, risk, catalysts."
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     return (
         "You are an elite investment analysis AI. Compare the two requested tickers using the provided live data.\n\n"
+        f"Current Date/Time: {now_str}\n\n"
         "Guidelines:\n"
         "1. Start with a brief <thought> block to analyze the comparative data.\n"
         "2. Provide a side-by-side comparison table for key metrics (price, market cap, P/E, EPS, analyst consensus) if available.\n"
@@ -529,83 +566,49 @@ def _count_items(value: object) -> int:
 
 
 def _render_header(api_ok: bool, model_id: str, tickers_count: int, news_count: int, search_count: int) -> None:
-    col1, col2 = st.columns([3, 1], gap="large")
-    with col1:
-        status_badge = "Ready" if api_ok else "API key missing"
-        st.markdown(
-            f"""
-<div class="hero">
-  <div>
-    <span class="chip primary">AI Agent System</span>
-    <span class="chip success">Manual Tools (No-Fail)</span>
-    <span class="chip warn">Groq Summarizer</span>
-    <span class="chip primary">{status_badge}</span>
-  </div>
-  <h1>AI Finance Agent Team</h1>
-  <p>Production-minded agentic workflow that combines live web/news + market data with Groq reasoning.</p>
+    status_class = "cyan" if api_ok else "rose"
+    status_text = "AI System Active" if api_ok else "API Key Missing"
+    
+    st.markdown(
+        f"""
+<div class="hero-container">
+    <div>
+        <span class="status-badge {status_class}">{status_text}</span>
+        <span class="status-badge emerald">Groq Enabled</span>
+        <span class="status-badge cyan">v2.0</span>
+    </div>
+    <div class="hero-title">AI Finance Agent Team</div>
+    <div class="hero-subtitle">
+        Elevated multi-agent orchestration for real-time market analysis and financial intelligence. 
+        Powered by Groq Llama-3 and deterministic tool workflows.
+    </div>
 </div>
 """,
-            unsafe_allow_html=True,
-        )
-    with col2:
-        st.markdown(
-            f"""
-<div class="card">
-  <div class="card-title">System Snapshot</div>
-  <div class="card-muted">Model</div>
-  <div style="font-weight:700; margin-bottom:8px;">{model_id}</div>
-  <div class="divider"></div>
-  <div class="stat">
-    <div class="stat-label">Tickers</div>
-    <div class="stat-value">{tickers_count}</div>
-  </div>
-  <div style="height:8px"></div>
-  <div class="stat">
-    <div class="stat-label">News Items</div>
-    <div class="stat-value">{news_count}</div>
-  </div>
-  <div style="height:8px"></div>
-  <div class="stat">
-    <div class="stat-label">Search Results</div>
-    <div class="stat-value">{search_count}</div>
-  </div>
-</div>
-""",
-            unsafe_allow_html=True,
-        )
+        unsafe_allow_html=True,
+    )
 
 
 def _render_how_it_works() -> None:
-    st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
-    st.markdown("<div class='section-title'>Agent pipeline</div>", unsafe_allow_html=True)
     st.markdown(
         """
-<div class='card'>
-  <div class='pipeline'>
-    <div class='pipeline-step'>
-      <div class='step'>01</div>
-      <div class='step-title'>Collect</div>
-      <div class='step-desc'>DuckDuckGo + Yahoo Finance</div>
+<div class='util-card'>
+  <div class='util-title'>Agent Reasoning Model</div>
+  <div class='pipeline-grid'>
+    <div class='pipeline-item'>
+      <div class='pipeline-num'>TRACK 01</div>
+      <div class='pipeline-txt'><b>Collect</b>: Parallel ingest via DuckDuckGo & Yahoo Finance</div>
     </div>
-    <div class='pipeline-step'>
-      <div class='step'>02</div>
-      <div class='step-title'>Structure</div>
-      <div class='step-desc'>Ticker parsing and data normalization</div>
+    <div class='pipeline-item'>
+      <div class='pipeline-num'>TRACK 02</div>
+      <div class='pipeline-txt'><b>Process</b>: Ticker resolution and context normalization</div>
     </div>
-    <div class='pipeline-step'>
-      <div class='step'>03</div>
-      <div class='step-title'>Reason</div>
-      <div class='step-desc'>Groq summary with comparisons</div>
+    <div class='pipeline-item'>
+      <div class='pipeline-num'>TRACK 03</div>
+      <div class='pipeline-txt'><b>Synthesize</b>: Groq-powered logical report generation</div>
     </div>
-  </div>
-  <div class='divider'></div>
-  <div class='card-muted'>Reliability defaults</div>
-  <div class='reliability'>
-    <span class='pill'>Deterministic tools</span>
-    <span class='pill'>Graceful fallbacks</span>
-    <span class='pill'>Best with explicit tickers</span>
   </div>
 </div>
+<div style='margin-bottom: 2rem;'></div>
 """,
         unsafe_allow_html=True,
     )
@@ -681,9 +684,14 @@ def main() -> None:
         st.session_state.pending_prompt = "What's happening in AI stocks this week?"
 
     metrics = st.columns(3)
-    metrics[0].metric("Tickers", tickers_count)
-    metrics[1].metric("News items", news_count)
-    metrics[2].metric("Search results", search_count)
+    with metrics[0]:
+        st.markdown(f"<div class='metric-card'><div class='metric-label'>Active Tickers</div><div class='metric-value'>{tickers_count}</div></div>", unsafe_allow_html=True)
+    with metrics[1]:
+        st.markdown(f"<div class='metric-card'><div class='metric-label'>News Items</div><div class='metric-value'>{news_count}</div></div>", unsafe_allow_html=True)
+    with metrics[2]:
+        st.markdown(f"<div class='metric-card'><div class='metric-label'>Web Results</div><div class='metric-value'>{search_count}</div></div>", unsafe_allow_html=True)
+
+    st.markdown("<div style='margin-bottom: 2rem;'></div>", unsafe_allow_html=True)
 
     tabs = st.tabs(["Chat", "Investment Compare", "Insights", "About"])
 
