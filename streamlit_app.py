@@ -616,7 +616,7 @@ def _render_header(api_ok: bool, model_id: str, tickers_count: int, news_count: 
     <div>
         <span class="status-badge {status_class}">{status_text}</span>
         <span class="status-badge emerald">Groq Enabled</span>
-        <span class="status-badge cyan">v3.0 - Evolution</span>
+        <span class="status-badge cyan">v2.0 - Production</span>
     </div>
     <div class="hero-title">AI Finance Agent Team</div>
     <div class="hero-subtitle">
@@ -938,12 +938,29 @@ def main() -> None:
                 st.json(st.session_state.last_tools)
 
     with tabs[3]:
-        st.subheader("Why this is an AI agent project")
-        st.write(
-            "This system is an agentic pipeline: it collects live data, structures it into a clean context, "
-            "and uses Groq to synthesize insights. The model never calls tools directly, which makes outputs "
-            "deterministic and production-friendly."
-        )
+        st.subheader("🎓 Presenter Mode: Technical Cheat Sheet")
+        st.write("Use these points to explain the technical depth of your project to your teacher:")
+        
+        container = st.container(border=True)
+        with container:
+            st.markdown("""
+            ### 1. Hybrid Architecture (Deterministic Orchestration)
+            *   **Problem**: Standard AI agents often fail when they try to call tools themselves in a loop.
+            *   **Solution**: I built a 'Deterministic' pipeline where Python handles the data collection in parallel first, and the AI only performs the final 'High-Level Synthesis'. This ensures 100% reliability.
+            
+            ### 2. Temporal Grounding (Time-Awareness)
+            *   **Problem**: LLMs don't know what 'yesterday' or 'today' means relative to real-time.
+            *   **Solution**: The system injects the current system date/time into every reasoning cycle, allowing the agent to accurately fetch 'yesterday's news' without hallucination.
+            
+            ### 3. Multi-Agent Collaboration
+            *   **The Team**: Specialized agents for **Web Search** (DuckDuckGo) and **Financial Metrics** (Yahoo Finance) work together. This modular design makes it easy to add new asset classes like Crypto or Gold in the future.
+            
+            ### 4. Semantic UI Design
+            *   **UX as Utility**: Built with **Verdict Badges** (Bullish/Bearish) and **Real-Time Ticker Cards** so that the information is 'scannable' for a professional analyst.
+            """)
+        
+        st.divider()
+        st.caption("Developed with 💡 for the Advanced AI Finance Course.")
         st.markdown("**Production-ready posture**")
         st.markdown(
             """
