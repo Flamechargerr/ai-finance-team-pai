@@ -99,15 +99,15 @@ def _inject_css() -> None:
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 :root {
-  --bg-main: #030712;
-  --panel-bg: rgba(15, 23, 42, 0.65);
-  --panel-border: rgba(56, 189, 248, 0.15);
+  --bg-main: #020617; /* Deep midnight for richness */
+  --panel-bg: rgba(15, 23, 42, 0.85); /* More opaque panels */
+  --panel-border: rgba(56, 189, 248, 0.4); /* Much brighter borders */
   --accent: #22d3ee;
-  --accent-glow: rgba(34, 211, 238, 0.3);
-  --emerald: #10b981;
-  --rose: #f43f5e;
-  --ink: #f8fafc;
-  --muted: #94a3b8;
+  --accent-glow: rgba(34, 211, 238, 0.4);
+  --emerald: #34d399; /* Vibrant emerald */
+  --rose: #fb7185; /* Soft rose */
+  --ink: #ffffff; /* Pure white for maximum visibility */
+  --muted: #cbd5e1; /* Brighter muted text */
   --font-sans: 'Inter', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 }
@@ -121,12 +121,12 @@ def _inject_css() -> None:
 /* Glassmorphism Panels */
 .glass-panel {
   background: var(--panel-bg);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--panel-border);
-  border-radius: 12px;
+  border-radius: 16px;
   padding: 1.5rem;
-  box-shadow: 0 4px 24px -2px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.8);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -137,8 +137,8 @@ def _inject_css() -> None:
 }
 
 /* Typography */
-h1, h2, h3 { font-weight: 700 !important; letter-spacing: -0.025em !important; }
-.mono { font-family: var(--font-mono) !important; }
+h1, h2, h3 { font-weight: 800 !important; letter-spacing: -0.05em !important; color: var(--ink) !important; }
+.mono { font-family: var(--font-mono) !important; color: var(--accent) !important; }
 
 /* Custom Chat Bubbles */
 [data-testid="stChatMessage"] {
@@ -148,11 +148,6 @@ h1, h2, h3 { font-weight: 700 !important; letter-spacing: -0.025em !important; }
 }
 
 [data-testid="stChatMessageContent"] {
-    background: var(--panel-bg);
-    border: 1px solid var(--panel-border);
-    border-radius: 16px;
-    padding: 1.25rem 1.5rem !important;
-    font-size: 15px;
     line-height: 1.6;
     box-shadow: 0 2px 12px rgba(0,0,0,0.2);
 }
@@ -265,12 +260,31 @@ h1, h2, h3 { font-weight: 700 !important; letter-spacing: -0.025em !important; }
     border-bottom-color: var(--accent) !important;
 }
 
-/* Utility Card */
-.util-card {
-    background: var(--panel-bg);
-    border: 1px solid var(--panel-border);
-    border-radius: 12px;
-    padding: 1.5rem;
+/* Sidebar Improvements */
+[data-testid="stSidebar"] {
+    background-color: #030712 !important;
+    border-right: 1px solid var(--panel-border) !important;
+}
+
+[data-testid="stSidebar"] * {
+    color: var(--ink) !important;
+}
+
+/* Input Fields */
+.stTextInput input, .stSelectbox div[role="button"] {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid var(--panel-border) !important;
+    color: var(--ink) !important;
+}
+
+/* Metric Cards */
+.metric-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--panel-border);
+  padding: 1rem;
+  border-radius: 12px;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 .util-title { font-size: 18px; font-weight: 600; margin-bottom: 1rem; color: var(--ink); }
 
