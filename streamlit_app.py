@@ -737,7 +737,7 @@ def main() -> None:
             default_model = os.getenv("GROQ_MODEL", model_options[0])
             model_id = st.selectbox("Model", options=model_options, index=model_options.index(default_model) if default_model in model_options else 0)
         else:
-            model_options = ["Meta-Llama-3.1-405B-Instruct", "Meta-Llama-3.3-70B-Instruct", "Meta-Llama-3.1-8B-Instruct"]
+            model_options = ["Meta-Llama-3.3-70B-Instruct", "DeepSeek-R1-0528", "Qwen3-235B", "Meta-Llama-3.1-8B-Instruct"]
             model_id = st.selectbox("Model", options=model_options, index=0)
 
         st.caption(f"Currently using {provider} LPUs.")
@@ -858,7 +858,7 @@ def main() -> None:
                         # Auto-Fallback Logic
                         if "429" in str(exc) and provider == "Groq" and os.getenv("SAMBANOVA_API_KEY"):
                             st.warning("Groq rate limit hit. Switching to SambaNova fallback...")
-                            fallback_model = "Meta-Llama-3.1-405B-Instruct"
+                            fallback_model = "Meta-Llama-3.3-70B-Instruct"
                             summarizer = get_summarizer(fallback_model, "SambaNova")
                             try:
                                 response = summarizer.run(summary_prompt, stream=False)
@@ -935,7 +935,7 @@ def main() -> None:
                         # Auto-Fallback Logic
                         if "429" in str(exc) and provider == "Groq" and os.getenv("SAMBANOVA_API_KEY"):
                             st.warning("Groq rate limit hit. Switching to SambaNova fallback...")
-                            fallback_model = "Meta-Llama-3.1-405B-Instruct"
+                            fallback_model = "Meta-Llama-3.3-70B-Instruct"
                             summarizer = get_summarizer(fallback_model, "SambaNova")
                             try:
                                 response = summarizer.run(summary_prompt, stream=False)
