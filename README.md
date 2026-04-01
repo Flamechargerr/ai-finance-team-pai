@@ -4,6 +4,14 @@
 [![Groq Llama-3](https://img.shields.io/badge/LLM-Groq--Llama--3-cyan.svg)](https://groq.com/)
 [![Streamlit](https://img.shields.io/badge/UI-Streamlit-FF4B4B.svg)](https://streamlit.io/)
 
+### 🚀 Quick Start Command
+To run the project instantly, paste this into your terminal:
+```bash
+cd "/Users/anamay/Desktop/Projects/ai finance agent" && ./run_all.sh
+```
+
+---
+
 A professional-grade, multi-agent financial intelligence platform that synthesizes real-time market data, global news context, and analyst sentiment into executive-level reports. 
 
 Built with a "Mission Control" aesthetic and designed for 100% reliable execution in production-minded environments.
