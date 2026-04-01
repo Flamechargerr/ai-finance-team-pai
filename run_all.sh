@@ -24,5 +24,11 @@ if [[ -z "${GROQ_API_KEY:-}" ]]; then
   exit 1
 fi
 
+# Port conflict resolution: Automatically kill any existing process on 8501
+if lsof -t -i :8501 >/dev/null 2>&1; then
+  echo "Port 8501 is busy. Clearing it for you..."
+  lsof -t -i :8501 | xargs kill -9
+fi
+
 echo "Starting AI Finance Agent on http://localhost:8501"
 exec streamlit run streamlit_app.py --server.port 8501 --server.address 0.0.0.0
