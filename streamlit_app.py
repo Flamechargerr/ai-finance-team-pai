@@ -279,6 +279,44 @@ h1, h2, h3 { font-weight: 700 !important; letter-spacing: -0.025em !important; }
 .pipeline-num { font-family: var(--font-mono); color: var(--accent); font-size: 12px; margin-bottom: 0.5rem; }
 .pipeline-txt { font-size: 14px; font-weight: 500; }
 
+/* Verdict Badges */
+.verdict {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 4px;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    margin: 10px 0;
+}
+.verdict-bullish { background: rgba(16, 185, 129, 0.2); color: var(--emerald); border: 1px solid var(--emerald); box-shadow: 0 0 10px rgba(16, 185, 129, 0.3); }
+.verdict-bearish { background: rgba(244, 63, 94, 0.2); color: var(--rose); border: 1px solid var(--rose); box-shadow: 0 0 10px rgba(244, 63, 94, 0.3); }
+
+/* Ticker Card Strip */
+.ticker-strip {
+    display: flex;
+    overflow-x: auto;
+    gap: 1rem;
+    padding: 1rem 0;
+    margin-bottom: 1rem;
+    scrollbar-width: thin;
+}
+.ticker-card-mini {
+    min-width: 160px;
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    transition: all 0.2s ease;
+}
+.ticker-card-mini:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+}
+.ticker-symbol { font-family: var(--font-mono); font-weight: 700; color: var(--accent); font-size: 14px; }
+.ticker-price { font-family: var(--font-mono); font-size: 18px; font-weight: 500; color: var(--ink); margin: 4px 0; }
+
 #MainMenu {visibility: hidden;}
 footer {visibility: hidden;}
 </style>
@@ -519,9 +557,12 @@ def _build_summary_prompt(prompt: str, tickers: List[str], tool_data: Dict[str, 
         "1. Start with a brief <thought> block where you review the raw data and plan your response.\n"
         "2. Provide a clear, executive-style summary answering the user's prompt directly.\n"
         "3. Use professional markdown formatting including tables, bullet points, and bold text for key metrics.\n"
-        "4. Always cite news items with their exact full URLs if available.\n"
-        "5. Do not hallucinate financial numbers. If data is missing or unrelated, explicitly state it is best-effort.\n"
-        "6. Do not insert extra spaces between letters.\n\n"
+        "4. **AI Verdict Badges**: If you reach a definitive conclusion (e.g. Bullish vs Bearish), use these exact HTML tags:\n"
+        "   - `<div class='verdict verdict-bullish'>STANCE: BULLISH</div>`\n"
+        "   - `<div class='verdict verdict-bearish'>STANCE: BEARISH</div>`\n"
+        "5. Always cite news items with their exact full URLs if available.\n"
+        "6. Do not hallucinate financial numbers. If data is missing or unrelated, explicitly state it is best-effort.\n"
+        "7. Do not insert extra spaces between letters.\n\n"
         f"User prompt:\n{prompt}\n\n"
         f"Detected tickers: {tickers_line}\n\n"
         f"Tool data (JSON):\n{json.dumps(tool_data, indent=2)}"
@@ -575,17 +616,57 @@ def _render_header(api_ok: bool, model_id: str, tickers_count: int, news_count: 
     <div>
         <span class="status-badge {status_class}">{status_text}</span>
         <span class="status-badge emerald">Groq Enabled</span>
-        <span class="status-badge cyan">v2.0</span>
+        <span class="status-badge cyan">v3.0 - Evolution</span>
     </div>
     <div class="hero-title">AI Finance Agent Team</div>
     <div class="hero-subtitle">
-        Elevated multi-agent orchestration for real-time market analysis and financial intelligence. 
-        Powered by Groq Llama-3 and deterministic tool workflows.
+        Elite multi-agent orchestration for institutional-grade market analysis. 
+        Featuring sub-second Groq reasoning and deterministic tool workflows.
     </div>
 </div>
 """,
         unsafe_allow_html=True,
     )
+
+
+def _render_ticker_row(tool_data: Dict[str, object]) -> None:
+    finance = tool_data.get("finance", {})
+    if not finance:
+        return
+    
+    # Filter out entries that don't have valid price data
+    valid_finance = {k: v for k, v in finance.items() if "price" in v and not v.get("price_error")}
+    if not valid_finance:
+        return
+
+    st.markdown("### Real-Time Market Strip")
+    cols = st.columns(min(len(valid_finance), 4)) # Max 4 per row
+    
+    for i, (ticker, data) in enumerate(valid_finance.items()):
+        price_val = data.get("price")
+        # Handle various price formats from yfinance tool
+        if isinstance(price_val, str):
+            try:
+                price_val = json.loads(price_val)
+            except:
+                pass
+        
+        display_price = "N/A"
+        if isinstance(price_val, dict):
+            display_price = price_val.get("price") or price_val.get("currentPrice") or "N/A"
+        elif isinstance(price_val, (int, float)):
+            display_price = f"{price_val:,.2f}"
+            
+        with cols[i % 4]:
+            st.markdown(
+                f"""
+<div class="ticker-card-mini">
+    <div class="ticker-symbol">{ticker}</div>
+    <div class="ticker-price">${display_price}</div>
+</div>
+""",
+                unsafe_allow_html=True
+            )
 
 
 def _render_how_it_works() -> None:
@@ -671,6 +752,18 @@ def main() -> None:
             st.session_state.history = []
             st.session_state.last_tools = None
             st.session_state.last_tickers = []
+            
+        if st.session_state.history:
+            export_content = "# AI Finance Analysis Report\n\n"
+            for m in st.session_state.history:
+                export_content += f"## {m['role'].upper()}\n{m['content']}\n\n"
+                
+            st.download_button(
+                "📥 Export Analysis",
+                data=export_content,
+                file_name=f"finance_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
+                mime="text/markdown"
+            )
 
     _render_header(api_ok, model_id, tickers_count, news_count, search_count)
     _render_how_it_works()
@@ -690,6 +783,9 @@ def main() -> None:
         st.markdown(f"<div class='metric-card'><div class='metric-label'>News Items</div><div class='metric-value'>{news_count}</div></div>", unsafe_allow_html=True)
     with metrics[2]:
         st.markdown(f"<div class='metric-card'><div class='metric-label'>Web Results</div><div class='metric-value'>{search_count}</div></div>", unsafe_allow_html=True)
+
+    if st.session_state.last_tools:
+        _render_ticker_row(st.session_state.last_tools)
 
     st.markdown("<div style='margin-bottom: 2rem;'></div>", unsafe_allow_html=True)
 
