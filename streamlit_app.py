@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 
 from phi.agent import Agent
 from phi.model.groq import Groq
+from phi.model.sambanova import Sambanova
 from phi.tools.duckduckgo import DuckDuckGo
 from phi.tools.yfinance import YFinanceTools
 
@@ -591,9 +592,16 @@ def _build_investment_summary_prompt(
 
 
 @st.cache_resource(show_spinner=False)
-def get_summarizer(model_id: str) -> Agent:
+def get_summarizer(model_id: str, provider: str = "Groq") -> Agent:
+    if provider == "SambaNova":
+        return Agent(
+            name="SambaNova Summarizer",
+            role="Perform high-performance financial summarization using SambaNova LPUs",
+            model=Sambanova(id=model_id),
+            markdown=True,
+        )
     return Agent(
-        name="Summarizer",
+        name="Groq Summarizer",
         role="Summarize tool outputs and answer user questions",
         model=Groq(id=model_id),
         markdown=True,
@@ -721,10 +729,22 @@ def main() -> None:
 
     with st.sidebar:
         st.subheader("Control Panel")
-        model_id = st.text_input("Model", value=DEFAULT_MODEL_ID)
-        st.caption("Override with the GROQ_MODEL environment variable.")
+        
+        provider = st.radio("Model Provider", options=["Groq", "SambaNova"], index=0, horizontal=True)
+        
+        if provider == "Groq":
+            model_options = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "llama3-70b-8192", "llama3-8b-8192"]
+            default_model = os.getenv("GROQ_MODEL", model_options[0])
+            model_id = st.selectbox("Model", options=model_options, index=model_options.index(default_model) if default_model in model_options else 0)
+        else:
+            model_options = ["Meta-Llama-3.1-405B-Instruct", "Meta-Llama-3.3-70B-Instruct", "Meta-Llama-3.1-8B-Instruct"]
+            model_id = st.selectbox("Model", options=model_options, index=0)
+
+        st.caption(f"Currently using {provider} LPUs.")
         if not api_ok:
             st.warning("GROQ_API_KEY is not set. The app will fail without it.")
+        if not os.getenv("SAMBANOVA_API_KEY"):
+            st.info("SAMBANOVA_API_KEY not found. Some models will be disabled.")
 
         st.markdown("**Data sources**")
         include_finance = st.checkbox("Include finance data", value=True)
@@ -791,8 +811,6 @@ def main() -> None:
 
     tabs = st.tabs(["Chat", "Investment Compare", "Insights", "About"])
 
-    summarizer = get_summarizer(model_id)
-
     with tabs[0]:
         for item in st.session_state.history:
             with st.chat_message(item["role"]):
@@ -830,15 +848,29 @@ def main() -> None:
                     )
                     summary_prompt = _build_summary_prompt(prompt, tickers, tool_data)
 
+                    summarizer = get_summarizer(model_id, provider)
+
                     try:
                         response = summarizer.run(summary_prompt, stream=False)
                         content = response.get_content_as_string()
                         content = _normalize_spaced_text(content)
                     except Exception as exc:
-                        content = (
-                            "I couldn't generate a summary, but I did gather the raw data below. "
-                            f"Error: {exc}"
-                        )
+                        # Auto-Fallback Logic
+                        if "429" in str(exc) and provider == "Groq" and os.getenv("SAMBANOVA_API_KEY"):
+                            st.warning("Groq rate limit hit. Switching to SambaNova fallback...")
+                            fallback_model = "Meta-Llama-3.1-405B-Instruct"
+                            summarizer = get_summarizer(fallback_model, "SambaNova")
+                            try:
+                                response = summarizer.run(summary_prompt, stream=False)
+                                content = response.get_content_as_string()
+                                content = _normalize_spaced_text(content)
+                            except Exception as fb_exc:
+                                content = f"Both providers failed. Error: {fb_exc}"
+                        else:
+                            content = (
+                                "I couldn't generate a summary, but I did gather the raw data below. "
+                                f"Error: {exc}"
+                            )
                     st.markdown(content)
                     if show_raw_data:
                         with st.expander("Raw data"):
@@ -895,14 +927,26 @@ def main() -> None:
                     )
                     summary_prompt = _build_investment_summary_prompt(clean_a, clean_b, focus, tool_data)
 
+                    summarizer = get_summarizer(model_id, provider)
                     try:
                         response = summarizer.run(summary_prompt, stream=False)
                         summary = _normalize_spaced_text(response.get_content_as_string())
                     except Exception as exc:
-                        summary = (
-                            "I couldn't generate an investment summary, but the raw data is available below. "
-                            f"Error: {exc}"
-                        )
+                        # Auto-Fallback Logic
+                        if "429" in str(exc) and provider == "Groq" and os.getenv("SAMBANOVA_API_KEY"):
+                            st.warning("Groq rate limit hit. Switching to SambaNova fallback...")
+                            fallback_model = "Meta-Llama-3.1-405B-Instruct"
+                            summarizer = get_summarizer(fallback_model, "SambaNova")
+                            try:
+                                response = summarizer.run(summary_prompt, stream=False)
+                                summary = _normalize_spaced_text(response.get_content_as_string())
+                            except Exception as fb_exc:
+                                summary = f"Both providers failed. Error: {fb_exc}"
+                        else:
+                            summary = (
+                                "I couldn't generate an investment summary, but the raw data is available below. "
+                                f"Error: {exc}"
+                            )
 
                     st.session_state.investment_last = {
                         "tickers": [clean_a, clean_b],
@@ -944,9 +988,12 @@ def main() -> None:
         container = st.container(border=True)
         with container:
             st.markdown("""
-            ### 1. Hybrid Architecture (Deterministic Orchestration)
-            *   **Problem**: Standard AI agents often fail when they try to call tools themselves in a loop.
-            *   **Solution**: I built a 'Deterministic' pipeline where Python handles the data collection in parallel first, and the AI only performs the final 'High-Level Synthesis'. This ensures 100% reliability.
+            ### 1. Institutional-Grade Multi-Cloud Fallback
+            *   **Problem**: Single-provider AI apps fail during peak traffic (Rate Limits).
+            *   **Solution**: Integrated **Groq** and **SambaNova** LPUs. If one provider hits a limit, the system **automatically fails over** to the second provider to ensure 100% uptime.
+            
+            ### 2. Extreme Reasoning (405B)
+            *   **Capability**: Through SambaNova, the agent can access **Llama-3.1-405B**, the world's most powerful open-weights model, for institutional-level logical synthesis.
             
             ### 2. Temporal Grounding (Time-Awareness)
             *   **Problem**: LLMs don't know what 'yesterday' or 'today' means relative to real-time.
