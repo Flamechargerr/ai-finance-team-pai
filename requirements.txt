@@ -5,3 +5,6 @@ yfinance
 
 streamlit
 sqlalchemy
+openai
+scikit-learn
+
