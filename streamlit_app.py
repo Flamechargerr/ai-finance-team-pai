@@ -840,7 +840,7 @@ def main() -> None:
 
     st.markdown("<div style='margin-bottom: 2rem;'></div>", unsafe_allow_html=True)
 
-    tabs = st.tabs(["Chat", "Investment Compare", "QuantEdge Analytics Console", "Insights", "About"])
+    tabs = st.tabs(["Chat", "Investment Compare", "QuantEdge Analytics Console", "IndexForge Engine", "Insights", "About"])
 
     with tabs[0]:
         for item in st.session_state.history:
@@ -1270,6 +1270,64 @@ def main() -> None:
             session.close()
 
     with tabs[3]:
+        st.header("⚙️ IndexForge: Cap-Weighted Index Construction Engine")
+        st.caption("MSCI Rule-Based Equity Index Selection, Divisor Continuous Adjustments, and Rebalancing")
+        
+        col1, col2 = st.columns([1, 2])
+        with col1:
+            st.markdown("### Controls")
+            st.write("Trigger the backtesting, data ingestion, and rebalancing engine to recalculate performance indices.")
+            run_btn = st.button("⚡ Run Ingestion & Rebalancing", use_container_width=True)
+        
+        with col2:
+            st.markdown("### Real-time Status")
+            status_box = st.empty()
+            status_box.info("Idle. Ready to run index calculations.")
+        
+        if run_btn:
+            status_box.info("Starting automated index calculation...")
+            import subprocess
+            try:
+                env = os.environ.copy()
+                env["PYTHONPATH"] = "index_forge"
+                
+                with st.spinner("Initializing Database, Ingesting Universe, Evaluating MSCI Schedule Rebalances, and Backtesting Attribution..."):
+                    res = subprocess.run(
+                        [".venv/bin/python", "index_forge/main.py", "--full-run"],
+                        capture_output=True,
+                        text=True,
+                        env=env,
+                        check=True
+                    )
+                st.success("IndexForge engine calculations complete!")
+                status_box.success("Execution complete. Visualizations and reports successfully updated.")
+            except Exception as e:
+                st.error(f"Execution failed: {e}")
+                if 'res' in locals() and res.stderr:
+                    st.code(res.stderr)
+        
+        st.divider()
+        
+        col_metrics, col_chart = st.columns([2, 3])
+        
+        with col_metrics:
+            st.markdown("### Executive Report")
+            report_path = "indexforge_report.md"
+            if os.path.exists(report_path):
+                with open(report_path, "r") as f:
+                    st.markdown(f.read())
+            else:
+                st.info("No report generated yet. Run the engine to produce the performance report.")
+                
+        with col_chart:
+            st.markdown("### Index Performance Attribution")
+            chart_path = "assets/index_performance.png"
+            if os.path.exists(chart_path):
+                st.image(chart_path, caption="IndexForge Custom vs. SPY Benchmark (Rebased)", use_container_width=True)
+            else:
+                st.info("No performance chart generated yet. Run the engine to plot visual attribution.")
+
+    with tabs[4]:
         st.subheader("Latest run overview")
         if not st.session_state.last_tools:
             st.info("Run a query to see insights and raw data.")
@@ -1282,7 +1340,7 @@ def main() -> None:
                 st.markdown("**Raw tool data**")
                 st.json(st.session_state.last_tools)
 
-    with tabs[4]:
+    with tabs[5]:
         st.subheader("🎓 Presenter Mode: Technical Cheat Sheet")
         st.write("Use these points to explain the technical depth of your project to your teacher:")
         
@@ -1296,14 +1354,14 @@ def main() -> None:
             ### 2. Extreme Reasoning (405B)
             *   **Capability**: Through SambaNova, the agent can access **Llama-3.1-405B**, the world's most powerful open-weights model, for institutional-level logical synthesis.
             
-            ### 2. Temporal Grounding (Time-Awareness)
+            ### 3. Temporal Grounding (Time-Awareness)
             *   **Problem**: LLMs don't know what 'yesterday' or 'today' means relative to real-time.
             *   **Solution**: The system injects the current system date/time into every reasoning cycle, allowing the agent to accurately fetch 'yesterday's news' without hallucination.
             
-            ### 3. Multi-Agent Collaboration
+            ### 4. Multi-Agent Collaboration
             *   **The Team**: Specialized agents for **Web Search** (DuckDuckGo) and **Financial Metrics** (Yahoo Finance) work together. This modular design makes it easy to add new asset classes like Crypto or Gold in the future.
             
-            ### 4. Semantic UI Design
+            ### 5. Semantic UI Design
             *   **UX as Utility**: Built with **Verdict Badges** (Bullish/Bearish) and **Real-Time Ticker Cards** so that the information is 'scannable' for a professional analyst.
             """)
         
@@ -1318,6 +1376,7 @@ def main() -> None:
 - Separate chat and investment-compare modes for focused workflows
 """
         )
+
 
 
 if __name__ == "__main__":

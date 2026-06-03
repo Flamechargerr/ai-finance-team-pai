@@ -1,10 +1,19 @@
+# Core Multi-Agent & Machine Learning Dashboard
 phidata
 groq
 duckduckgo-search
 yfinance
-
 streamlit
 sqlalchemy
 openai
 scikit-learn
 
+# IndexForge Ingestion & Backtesting Engine
+psycopg2-binary
+tqdm
+tabulate
+pytest
+pytest-cov
+matplotlib
+seaborn
+python-dotenv
